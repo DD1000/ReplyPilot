@@ -53,6 +53,7 @@ public final class Sender {
         if(!ManualTakeoverPolicy.requestId(requestId))throw new IllegalArgumentException("Start this send again from the conversation.");
         synchronized(PilotApp.SEND_LOCK){
             if(!PilotApp.foreground||!Messages.role(c)||!Messages.allowed(c,Manifest.permission.READ_SMS))throw new IllegalStateException("Open Reply Pilot with messaging access before sending.");
+            sub=Messages.effectiveSim(c,sub);
             String recipient=singleRecipient(c,thread);
             if(!PhoneNumberUtils.compare(recipient,address)||Messages.thread(c,address)!=thread)throw new IllegalStateException("The recipient does not match this conversation. Open it again.");
             Store db=Store.get(c);JSONObject previous=db.query("SELECT * FROM manual_sends WHERE request_id=?",new String[]{requestId}).optJSONObject(0);
@@ -66,7 +67,7 @@ public final class Sender {
             JSONObject savedDraft=db.query("SELECT body,location_revision,location_expires FROM drafts WHERE thread=?",new String[]{Long.toString(thread)}).optJSONObject(0);
             long takeover=ManualTakeover.claim(c,thread,recipient);
             if(!Messages.allowed(c,Manifest.permission.SEND_SMS))throw new IllegalStateException("Allow SMS sending, then tap Send again. Pilot remains paused for this message.");
-            if(!Messages.activeSim(c,sub))throw new IllegalStateException("Select an active SIM in Settings. Pilot remains paused for this message.");
+            if(!Messages.activeSim(c,sub))throw new IllegalStateException(Messages.simProblem(c)+" Pilot remains paused for this message.");
             long due=System.currentTimeMillis();
             if(savedDraft!=null&&body.equals(savedDraft.optString("body"))){String location=LocationReplies.block(c,savedDraft,due);if(location!=null)throw new IllegalStateException(location);}
             // A request ID is linked to its job in one commit, before any carrier call.
@@ -113,8 +114,8 @@ public final class Sender {
             if(!Messages.allowed(c,Manifest.permission.SEND_SMS))throw new IllegalStateException("Allow SMS sending before using Delay.");
             long thread=action.optLong("thread"),base=action.optLong("base");String address=singleRecipient(c,thread);
             if(!PhoneNumberUtils.compare(address,Messages.address(c,thread,base)))throw new IllegalStateException("The recipient could not be confirmed. Open the conversation.");
-            JSONArray sims=Messages.sims(c);int sub=c.getSharedPreferences("settings",0).getInt("sub",-1);if(sub<0&&sims.length()==1)sub=sims.optJSONObject(0).optInt("id");
-            if(!Messages.activeSim(c,sub))throw new IllegalStateException("Choose an active SIM in Settings before using Delay.");
+            int sub=Messages.savedSim(c);
+            if(!Messages.activeSim(c,sub))throw new IllegalStateException(Messages.simProblem(c));
             SendPolicy.validate(address,AttentionPolicy.DELAY_TEXT,0);SendPolicy.validateConversation(thread,base);
             Store db=Store.get(c);android.database.sqlite.SQLiteDatabase sql=db.getWritableDatabase();long id;
             sql.beginTransaction();
@@ -140,7 +141,8 @@ public final class Sender {
         synchronized(PilotApp.SEND_LOCK){
             if(!Messages.role(c)||!Messages.allowed(c,Manifest.permission.SEND_SMS)||!Messages.allowed(c,Manifest.permission.READ_SMS))throw new IllegalStateException("Make Reply Pilot your default SMS app and allow messaging permissions first.");
             if(Messages.thread(c,address)!=thread)throw new IllegalStateException("The recipient does not match this conversation.");
-            if(!Messages.activeSim(c,sub))throw new IllegalStateException("Select an active SIM in Settings first.");
+            sub=Messages.effectiveSim(c,sub);
+            if(!Messages.activeSim(c,sub))throw new IllegalStateException(Messages.simProblem(c));
             if(Messages.latest(c,thread)!=base)throw new IllegalStateException("This conversation changed. Review the latest message before accepting.");
             String timing=SendPolicy.manualTimingBlock(delay,delay==0||exact(c));if(timing!=null)throw new IllegalStateException(timing);
             if(Store.get(c).query("SELECT _id FROM jobs WHERE thread=? AND status IN ('scheduled','sending','awaiting_alert')",new String[]{""+thread}).length()>0)throw new IllegalStateException("This conversation already has a pending reply. Cancel it first.");
@@ -178,8 +180,8 @@ public final class Sender {
             String silence=AutomaticReplies.reason(c,thread,base,draft.optString("body"),0);
             if(silence!=null){AutomaticReplies.record(c,thread,base,silence);return 0;}
             SendPolicy.validate(address,draft.optString("body"),minimumSeconds*1000);
-            JSONArray sims=Messages.sims(c);int sub=c.getSharedPreferences("settings",0).getInt("sub",-1);if(sub<0&&sims.length()==1)sub=sims.optJSONObject(0).optInt("id");
-            if(!Messages.activeSim(c,sub))throw new IllegalStateException("Choose an active SIM in Settings before automatic sending.");
+            int sub=Messages.savedSim(c);
+            if(!Messages.activeSim(c,sub))throw new IllegalStateException(Messages.simProblem(c));
             if(db.query("SELECT _id FROM jobs WHERE thread=? AND status IN ('scheduled','awaiting_alert')",new String[]{""+thread}).length()>0)throw new IllegalStateException("This conversation already has a pending reply. Review or cancel it first.");
             // Draw exactly once, after preflight. Never reroll to fit Sleep's cutoff.
             if(!SleepSession.generationAllowed(c,base,sleepRevision))return 0;
@@ -202,8 +204,8 @@ public final class Sender {
         if(!ReplyReadiness.current(c,thread,profile.optString("samples")).eligible())return 0;
         if(PlanSafety.commitment(reply.body())||RequestSafety.unsuitableReply(reply.body()))throw new IllegalStateException("This reply needs your input.");
         SendPolicy.validate(source.address(),reply.body(),delay*1000);
-        JSONArray sims=Messages.sims(c);int sub=c.getSharedPreferences("settings",0).getInt("sub",-1);if(sub<0&&sims.length()==1)sub=sims.optJSONObject(0).optInt("id");
-        if(!Messages.activeSim(c,sub))throw new IllegalStateException("Choose an active SIM before Autopilot can send.");
+        int sub=Messages.savedSim(c);
+        if(!Messages.activeSim(c,sub))throw new IllegalStateException(Messages.simProblem(c));
         if(db.query("SELECT _id FROM jobs WHERE thread=? AND status IN ('scheduled','awaiting_alert')",new String[]{Long.toString(thread)}).length()>0)return 0;
         android.database.sqlite.SQLiteDatabase sql=db.getWritableDatabase();sql.beginTransaction();
         try{

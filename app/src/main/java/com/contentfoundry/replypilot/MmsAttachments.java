@@ -98,6 +98,7 @@ public final class MmsAttachments {
         Context c=context.getApplicationContext();if(!MmsSendPolicy.id(requestId))throw new IllegalArgumentException("Start a new attachment send from the conversation.");MmsSendPolicy.caption(caption);
         final JSONObject job,savedDraft;final JSONArray attachments;final Limits carrier;String id;
         synchronized(PilotApp.SEND_LOCK){
+            sub=Messages.effectiveSim(c,sub);
             MmsOutbox db=MmsOutbox.get(c);JSONObject prior=db.request(requestId);if(prior!=null){if(prior.optLong("thread")!=thread||prior.optLong("base")!=base||prior.optInt("sub")!=sub||!prior.optString("address").equals(address)||!prior.optString("caption").equals(caption))throw new IllegalStateException("This send request was already used with different message details. Start a new send.");return result(prior);}
             require(c);editable(c,thread);SendPolicy.validateConversation(thread,base);if(!SendPolicy.validAddress(address))throw new IllegalArgumentException("Choose a valid SMS recipient.");
             if(!PhoneNumberUtils.compare(Sender.singleRecipient(c,thread),address)||Messages.thread(c,address)!=thread)throw new IllegalStateException("The recipient does not match this conversation.");
@@ -105,7 +106,7 @@ public final class MmsAttachments {
             // location binding before takeover removes the old AI draft.
             savedDraft=Store.get(c).draft(thread,base);
             ManualTakeover.claim(c,thread,address);
-            if(!Messages.activeSim(c,sub))throw new IllegalStateException("Choose an active SIM in Settings first.");carrier=limits(c,sub);if(!carrier.enabled())throw new IllegalStateException("MMS is disabled by this carrier.");
+            if(!Messages.activeSim(c,sub))throw new IllegalStateException(Messages.simProblem(c));carrier=limits(c,sub);if(!carrier.enabled())throw new IllegalStateException("MMS is disabled by this carrier.");
             if(Messages.latest(c,thread)!=base||MmsDownloads.isPending()||IncomingBurst.hasUnbound(c))throw new IllegalStateException("New messages arrived. Review the conversation before sending.");
             attachments=db.query("SELECT * FROM attachments WHERE thread=? ORDER BY created,id",Long.toString(thread));if(attachments.length()==0||attachments.length()>MmsSendPolicy.MAX_ITEMS)throw new IllegalStateException("Add an attachment before sending.");
             StringBuilder signature=new StringBuilder();for(int i=0;i<attachments.length();i++){JSONObject item=attachments.optJSONObject(i);if(!item.optString("job").isEmpty())throw new IllegalStateException("The previous attachment send is not confirmed. Check it before trying again.");signature.append(item.optString("hash")).append(':').append(item.optString("mime")).append(';');}
@@ -145,7 +146,7 @@ public final class MmsAttachments {
         if(!Messages.role(c)||!Messages.allowed(c,Manifest.permission.READ_SMS)||!Messages.allowed(c,Manifest.permission.SEND_SMS))throw new IllegalStateException("Make Reply Pilot the default texting app and allow SMS before sending attachments.");
     }
     private static boolean canPreview(Context c){return Messages.role(c)&&Messages.allowed(c,Manifest.permission.READ_SMS);}
-    private static int selected(Context c){int sub=c.getSharedPreferences("settings",0).getInt("sub",-1);JSONArray sims=Messages.sims(c);if(sub<0&&sims.length()==1)sub=sims.optJSONObject(0).optInt("id",-1);if(!Messages.activeSim(c,sub))throw new IllegalStateException("Choose an active SIM in Settings first.");return sub;}
+    private static int selected(Context c){int sub=Messages.savedSim(c);if(!Messages.activeSim(c,sub))throw new IllegalStateException(Messages.simProblem(c));return sub;}
     private static Limits limits(Context c,int sub){
         SmsManager service=c.getSystemService(SmsManager.class);if(service==null)throw new IllegalStateException("Carrier messaging is unavailable.");Bundle config=service.createForSubscriptionId(sub).getCarrierConfigValues();
         if(config==null)throw new IllegalStateException("Carrier MMS settings are unavailable.");

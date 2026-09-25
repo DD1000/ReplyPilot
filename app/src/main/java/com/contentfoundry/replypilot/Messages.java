@@ -253,6 +253,14 @@ public final class Messages {
         if(list!=null)for(SubscriptionInfo s:list)try{out.put(new JSONObject().put("id",s.getSubscriptionId()).put("name",s.getDisplayName().toString()));}catch(JSONException ignored){}return out;
     }
     public static boolean activeSim(Context c,int sub){JSONArray a=sims(c);for(int i=0;i<a.length();i++)if(a.optJSONObject(i).optInt("id")==sub)return true;return false;}
+    /** Android shares the SIM list only with Phone (READ_PHONE_STATE) access. */
+    public static boolean phoneAccess(Context c){return allowed(c,Manifest.permission.READ_PHONE_STATE);}
+    static List<Integer> simIds(JSONArray sims){List<Integer> ids=new ArrayList<>();for(int i=0;i<sims.length();i++){JSONObject s=sims.optJSONObject(i);if(s!=null)ids.add(s.optInt("id",SimPolicy.NONE));}return ids;}
+    /** The requested SIM if still active, otherwise the phone's only active SIM, otherwise -1. */
+    public static int effectiveSim(Context c,int requested){return SimPolicy.effective(requested,simIds(sims(c)));}
+    /** The owner's saved sending SIM, recovered to the only active SIM when the saved one is gone. */
+    public static int savedSim(Context c){return effectiveSim(c,c.getSharedPreferences("settings",0).getInt("sub",SimPolicy.NONE));}
+    public static String simProblem(Context c){return SimPolicy.problem(phoneAccess(c),sims(c).length());}
     public static void read(Context c,long thread){
         if(thread<=0||!PilotApp.foreground||!role(c)||!allowed(c,Manifest.permission.READ_SMS))return;
         ContentValues values=new ContentValues();values.put("read",1);values.put("seen",1);
