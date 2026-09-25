@@ -461,6 +461,10 @@ textarea { touch-action:manipulation; }
 .sim-help .connection-actions{margin-top:10px}
 .battery-note{margin:12px 0 4px;padding:12px 14px;border-radius:16px;background:var(--soft);border:1px solid var(--line)}
 .battery-note p{font-size:12px;margin:0 0 10px}
+.owner-views-panel label{display:block;font-size:13px;font-weight:600;margin-top:14px}
+.owner-views-panel textarea{width:100%;min-height:110px;margin-top:8px;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--bg);color:var(--ink);resize:vertical;font-size:13px;line-height:1.5}
+.owner-views-panel .connection-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+.owner-views-panel small{color:var(--muted)}
 .persona-panel{margin:4px 0 14px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--soft);font-size:12px;line-height:1.5}
 .persona-panel h4{margin:0 0 6px;font-size:13px;color:var(--ink)}
 .persona-panel p{margin:6px 0;color:var(--muted)}

@@ -1,18 +1,24 @@
-# Install Reply Pilot 0.12.1
+# Install Reply Pilot 0.12.2
 
 ## 1. Update the server
 
-Double-click **Update Server.command** in the project folder. It runs the server tests, then uploads `relay/` to your Reply Pilot project on Railway using your Mac's Railway sign-in (it offers to sign in or install Railway's tool if needed). Your OpenAI key and phone token stay in Railway; no new variables are needed. The log is saved as `server-update-log.txt`. Older 0.11.x and 0.12.0 phones keep working with the updated server.
+Double-click **Update Server.command** in the project folder. It runs the server tests, then uploads `relay/` to your Reply Pilot project on Railway using your Mac's Railway sign-in (it offers to sign in or install Railway's tool if needed). Your OpenAI key and phone token stay in Railway; no new variables are needed. The log is saved as `server-update-log.txt`. Older 0.11.x and 0.12.x phones keep working with the updated server.
 
 ## 2. Build the app
 
-Double-click **Build Reply Pilot.command**. It uses Java 21 and the Android SDK in `~/Library/Android`, runs the unit tests, and saves `dist/Reply-Pilot-0.12.1.apk`, checking that it's signed with your phone's key (`.local-signing/` must stay in place). The log is saved as `build-log.txt`.
+Double-click **Build Reply Pilot.command**. It uses Java 21 and the Android SDK in `~/Library/Android`, runs the unit tests, and saves `dist/Reply-Pilot-0.12.2.apk`, checking that it's signed with your phone's key (`.local-signing/` must stay in place). The log is saved as `build-log.txt`.
 
 ## 3. Install on the Pixel
 
-Quick Share **Reply-Pilot-0.12.1.apk** from `dist/`, open it in Files by Google, and install it as an update; **do not uninstall**. Settings shows **Version 0.12.1** (version code 67). Your trained chats and Autopilot choices stay as they were. Then go to Settings → Phone setup → **Reply while locked → Allow** and approve Android's prompt.
+Quick Share **Reply-Pilot-0.12.2.apk** from `dist/`, open it in Files by Google, and install it as an update; **do not uninstall**. Settings shows **Version 0.12.2** (version code 68). Your trained chats and Autopilot choices stay as they were. Then fill in Settings → **Your views** and tap **Save views**. If you haven't yet, also tap Settings → Phone setup → **Reply while locked → Allow**.
 
-## New in 0.12.1
+## New in 0.12.2
+
+- Opinion questions get a short casual take in your voice instead of “Got your message. Let me get back to you.”
+- **Settings → Your views:** what you think about things; Autopilot uses it when someone asks your opinion.
+- Flagged replies keep Autopilot's own wording when it's safe, instead of a canned line.
+
+## Previous release: 0.12.1
 
 - Plan questions: the first gets an AI brush-off in your voice, the second one different follow-up, and after that Autopilot stays quiet and alerts you until you reply. No more repeating the same line.
 - **Reply while locked → Allow** (Settings, and in Autopilot chats until allowed) lets Autopilot reply promptly while the phone is locked. Android asks once.

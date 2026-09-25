@@ -30,6 +30,7 @@ final class TextMmsDrafts {
             JSONObject request=CloudDrafts.payload(thread,history.context().messages(),ContactGuidance.context(profile.optString("body"),profile.optString("importantDetails"),"always_reply"),profile.optString("samples"),"Use AI intuition",match)
                 .put("automatic",false).put("autopilot",true).put("automationReady",false).put("engagement","always_reply").put("styleMode","learned").put("persona",Personas.forReply(c,thread));
             if(match)request.put("approvedExamples",ApprovedLearning.examples(c,thread));
+            String views=OwnerViews.read(c);if(!views.isEmpty())request.put("ownerViews",views);
             if(!ManualTakeover.unchanged(c,thread,manualRevision)||!Personas.unchanged(c,thread,learningToken))throw new IllegalStateException(ManualTakeoverPolicy.WAITING);ManualTakeover.require(c,thread);
             JSONObject response;
             try{response=CloudClient.request(config,"/draft",request);}

@@ -1,16 +1,23 @@
-# Reply Pilot 0.12.1 — Android personal preview
+# Reply Pilot 0.12.2 — Android personal preview
 
 An Android SMS/MMS app with per-chat **Train Autopilot**. Tap the send arrow to send manually or hold it to choose Instant, 1 minute or 5 minutes. For each chat you choose, Autopilot learns how you text that person and replies in your voice; it defers decisions and plans and alerts you when a chat needs attention. The APK contains no OpenAI key; your paired HTTPS service holds it.
 
 Training is per chat and only starts when you tap **Train Autopilot** in that chat's Reply setup. The phone reads your most recent 1,000 SMS/MMS texts with that person, the service asks the training model (GPT-6 Astra by default) once, and the phone saves the resulting persona encrypted in private storage: how you text them, the relationship, ongoing context, things to avoid, and up to 30 of your real replies as examples. Each Autopilot reply sends that persona and the recent conversation to the reply model (GPT-6 Sol by default). Nothing about a chat goes to the service until you train it. This is contextual memory, not model training. RCS chats are not available to this app.
 
-**Status:** personal preview, version 0.12.1 (version code 67). The existing draft service is deployed to Railway, and the user previously reported successful phone pairing and test replies. See **VALIDATION.md** for completed checks by version. Carrier, background-send and physical Pixel media/codec tests remain outstanding. The browser preview uses synthetic data. ARM64 Android 12+; compile/target SDK 36. Pixel 11 compatibility requires testing on the actual phone.
+**Status:** personal preview, version 0.12.2 (version code 68). The existing draft service is deployed to Railway, and the user previously reported successful phone pairing and test replies. See **VALIDATION.md** for completed checks by version. Carrier, background-send and physical Pixel media/codec tests remain outstanding. The browser preview uses synthetic data. ARM64 Android 12+; compile/target SDK 36. Pixel 11 compatibility requires testing on the actual phone.
 
-## New in 0.12.1
+## New in 0.12.2
+
+- **Autopilot answers opinion questions instead of dodging them.** Questions like “what do you think AI will do to the economy?” used to be treated as chatbot work: Autopilot held back and the phone swapped in “Got your message. Let me get back to you.” Now opinion and big-picture questions get a short, casual take in your texting style, with no alert. Real work requests (write code, an essay, homework) still get a casual brush-off in your voice and an alert.
+- **Settings → Your views.** Type what you think about things people might ask you (up to 1,200 characters). When someone asks your opinion, Autopilot uses these views and never contradicts them. Without them it keeps opinions light and stays neutral on divisive political or religious questions.
+- **Fewer canned lines.** When Autopilot flags a chat for you, it keeps its own reply in your voice when that reply is safe. The fixed texts are used only if the AI is unreachable, its reply isn't safe, or someone asks for private information.
+- Requires the 0.12.2 server update (`Update Server.command`). Install over 0.12.1 without clearing storage. No new permission.
+
+## Previous release: 0.12.1
 
 - **Autopilot no longer repeats itself about plans.** Before, every plan question got the same fixed text (“I'll let you know in a bit.”), again and again. Now the first plan push gets a short brush-off written by the AI in your voice for that chat, and a second push gets one different follow-up. From the third push on, Autopilot stays quiet and alerts you each time (“Chat needs attention”) until you reply yourself. It still never agrees to, declines or suggests a time, and a deferral never repeats a text already in the chat. Plan deferrals more than 12 hours old, or from before your own last reply, don't count.
 - **Replies while the phone is locked.** Android can hold background work until you unlock the phone, which delays Autopilot. Settings → Phone setup has **Reply while locked → Allow**, and an Autopilot chat shows the same prompt until you allow it. Android asks once; afterwards Autopilot's reply jobs also run at high priority.
-- Requires the 0.12.1 server update (`Update Server.command`) for AI-written deferrals; with an older server the phone uses its own varied deferrals. Install over 0.12.0 without clearing storage. One new Android permission lets the app ask for the battery exemption; nothing changes until you tap Allow.
+- Required the 0.12.1 server update for AI-written deferrals. Added one Android permission so the app can ask for the battery exemption; nothing changes until you tap Allow.
 
 ## Previous release: 0.12.0
 

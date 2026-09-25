@@ -34,7 +34,13 @@ final class AutopilotPolicy {
         if(PlanSafety.commitment(text))return fallback("plans");
         if(RequestSafety.unsuitableReply(text))return fallback("uncertain");
         if(!(attentionNeeded instanceof Boolean attention))return fallback("uncertain");
-        if(attention)return fallback(attentionReason instanceof String why?why:"uncertain");
+        if(attention){
+            // Keep the model's own words when they are safe; a canned line reads like a bot.
+            // Private-information questions always get the fixed deferral, so nothing private leaks.
+            String why=attentionReason instanceof String value?value:"uncertain";
+            if(Set.of("plans","sensitive","uncertain").contains(why)&&PlanDeferralPolicy.acceptable(text,List.of()))return new Reply(text.strip(),true,why);
+            return fallback(why);
+        }
         if(!(attentionReason instanceof String why)||!why.isEmpty())return fallback("uncertain");
         return new Reply(text.strip(),false,"");
     }

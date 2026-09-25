@@ -1,4 +1,12 @@
-# Validation record — 0.12.1
+# Validation record — 0.12.2
+
+## 0.12.2 Opinion replies and Your views — 2026-09-25
+
+- Cause of “Got your message. Let me get back to you.” for an opinion question (“How do you envision the next 4 years with AI… give me a prediction… how will that affect the economy”): the Autopilot instructions told the model to defer on “unsupported expertise” and “general-assistant requests”, so it flagged attention, and the phone replaced any flagged reply with a fixed fallback. Now opinion questions are ordinary replies in the owner's voice, the owner's typed views (`ownerViews`) guide them, and flagged replies keep the model's own safe wording for `plans`, `sensitive` and `uncertain` (`personal_info` and `model_unavailable` still use the fixed deferral; commitments, over-long text and claimed whereabouts still fall back).
+- Relay: **162 tests** pass, including new `opinions.test.mjs` (3): the question reaches the model with `ownerViews` and returns as an ordinary reply; instructions include the opinion rules and drop the old deferral wording; `ownerViews` is bounded, trimmed and only sent for Autopilot.
+- JVM: **626 tests** pass in the cloud check, including new `OwnerViewsTest` and a new `AutopilotPolicyTest` case for kept wording; main sources compile against SDK 36 stubs with flow analysis (only the unavailable-library files are skipped).
+- Browser: new `tools/ui-owner-views.cjs` passes (explanation, unsaved text kept across refreshes, failed save keeps text, exact save and reload, hidden for older builds). `ui-battery`, `ui-train-autopilot`, `ui-autopilot-simple`, `ui-sim-help`, `ui-manual-takeover`, `ui-inbox-touch`, `ui-keyboard` and `ui-text-mms` still pass.
+- Physical Pixel checks remain: an opinion question from a real contact with and without Your views filled in.
 
 ## 0.12.1 Plan deferrals and locked-phone replies — 2026-09-25
 

@@ -177,6 +177,7 @@ export function validateInput(raw,{media=false}={}) {
  bounded(insideJokes,2000,'Inside jokes');
  const locationContext=raw.locationContext===undefined?undefined:validateLocation(raw.locationContext);
  const planDeferral=validatePlanDeferral(raw.planDeferral);
+ const ownerViews=raw.ownerViews===undefined?'':bounded(raw.ownerViews,1200,'Your views');
  if(!Array.isArray(raw.history)||raw.history.length<(media?0:1)||raw.history.length>50)throw new PublicError(400,media?'Use up to fifty recent messages.':'Include one to fifty recent messages.');
  let unansweredStart=raw.history.length;while(unansweredStart>0&&raw.history[unansweredStart-1]?.speaker==='them')unansweredStart--;
  const history=raw.history.map((m,index)=>{
@@ -195,7 +196,7 @@ export function validateInput(raw,{media=false}={}) {
  if(!matchStyle&&history.length>Math.max(8,history.length-unansweredStart))throw new PublicError(400,'History matching is off; include up to eight recent messages or the complete unanswered sequence.');
  // Already-installed phones omitted this field and may auto-send the response.
  const automatic=raw.automatic??true;
- return{...(raw.autopilot!==undefined?{autopilot:raw.autopilot}:{}),...(historyMemory?{historyMemory}:{}),...(persona?{persona}:{}),relationship,samples,tone:learned?(engagement==='girlfriend'?'Warm':'Use AI intuition'):tone,engagement,personality,humorLevel:learned?0:humorLevel,insideJokes:learned?'':insideJokes,...(learned?{styleMode:'learned'}:{}),approvedExamples,pilotTraining,messageMeanings,...(ownerInterpretation?{ownerInterpretation}:{}),...(locationContext?{locationContext}:{}),...(planDeferral?{planDeferral}:{}),history,style:matchStyle?style.map(x=>bounded(x,220,'Style example')):[],matchStyle,automatic,automationReady:raw.automationReady===true};
+ return{...(raw.autopilot!==undefined?{autopilot:raw.autopilot}:{}),...(historyMemory?{historyMemory}:{}),...(persona?{persona}:{}),relationship,samples,tone:learned?(engagement==='girlfriend'?'Warm':'Use AI intuition'):tone,engagement,personality,humorLevel:learned?0:humorLevel,insideJokes:learned?'':insideJokes,...(learned?{styleMode:'learned'}:{}),approvedExamples,pilotTraining,messageMeanings,...(ownerInterpretation?{ownerInterpretation}:{}),...(locationContext?{locationContext}:{}),...(planDeferral?{planDeferral}:{}),...(ownerViews?{ownerViews}:{}),history,style:matchStyle?style.map(x=>bounded(x,220,'Style example')):[],matchStyle,automatic,automationReady:raw.automationReady===true};
 }
 // How many times Autopilot already put off plans since the owner last replied (phone-counted).
 function validatePlanDeferral(raw){
@@ -383,7 +384,7 @@ export function createRelay({apiKey,token,model='gpt-6-sol',trainingModel='gpt-6
      return{...result,engine:'Reply Pilot · approved location',elapsedMs:now()-stamp};
     }
     }
-    const providerInput={...input};delete providerInput.personality;delete providerInput.planDeferral;if(!locationQuestion||planning)delete providerInput.locationContext;
+    const providerInput={...input};delete providerInput.personality;delete providerInput.planDeferral;if(!autopilot)delete providerInput.ownerViews;if(!locationQuestion||planning)delete providerInput.locationContext;
     if(input.styleMode==='learned'){delete providerInput.humorLevel;delete providerInput.insideJokes;delete providerInput.tone;}
     if(input.autopilot===true)for(const key of ['tone','engagement','humorLevel','insideJokes','pilotTraining','messageMeanings','ownerInterpretation'])delete providerInput[key];
     let content=JSON.stringify(providerInput);

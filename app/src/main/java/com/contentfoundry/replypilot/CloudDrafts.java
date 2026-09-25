@@ -77,6 +77,7 @@ public final class CloudDrafts {
                 .put("automatic",background).put("autopilot",true).put("automationReady",Personas.ready(c,thread))
                 .put("engagement","always_reply").put("styleMode","learned").put("persona",Personas.forReply(c,thread));
             if(matchStyle)request.put("approvedExamples",ApprovedLearning.examples(c,thread));
+            String views=OwnerViews.read(c);if(!views.isEmpty())request.put("ownerViews",views);
             if(planning)request.put("planDeferral",new JSONObject().put("count",PlanDeferralPolicy.requestCount(deferrals)));
             else if(location.payload()!=null)request.put("locationContext",location.payload());
             if(background&&(!SleepSession.generationAllowed(c,base,sleepRevision)||!IncomingBurst.unchanged(c,thread,base,burstAddress,burstToken)))return;
