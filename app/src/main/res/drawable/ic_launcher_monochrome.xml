@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="1254" android:viewportHeight="1254">
+    <!-- A single-color rendition of the supplied R/reply-arrow mark. -->
+    <group android:pivotX="627" android:pivotY="627" android:scaleX="0.8287037" android:scaleY="0.8287037">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M486,250H744C856,250 947,331 947,447C947,552 865,628 753,628L615,629C604,629 599,626 591,619L502,536C491,526 492,510 503,501L610,422C623,411 641,419 641,435L641,481H749C788,481 811,465 811,435C811,403 786,379 755,379H600C518,379 453,433 453,509V926C453,967 420,1000 380,1000C339,1000 307,967 307,926V420C307,326 386,250 486,250Z M592,658H687C699,658 710,664 719,674L920,884C946,913 944,956 916,984C888,1011 844,1013 814,986L554,741C524,710 545,658 592,658Z" />
+    </group>
+</vector>

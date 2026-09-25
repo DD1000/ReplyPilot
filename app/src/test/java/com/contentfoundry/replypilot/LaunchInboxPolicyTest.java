@@ -1,0 +1,24 @@
+package com.contentfoundry.replypilot;
+
+import org.junit.Test;
+import static org.junit.Assert.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+public class LaunchInboxPolicyTest {
+    private static LaunchInboxPolicy.Row row(long thread,long id,long date,boolean pinned){return new LaunchInboxPolicy.Row(thread,id,date,"sms",1,0,"+12025550100","A contact","A fictional snippet",pinned,false,-1,-1);}
+    @Test public void choosesTwentyMostRecentBeforePinOrder(){List<LaunchInboxPolicy.Row> input=new ArrayList<>();input.add(row(100,100,1,true));for(int i=1;i<=25;i++)input.add(row(i,i,100+i,false));List<LaunchInboxPolicy.Row> out=LaunchInboxPolicy.select(input);assertEquals(20,out.size());assertEquals(25,out.get(0).thread());assertEquals(6,out.get(19).thread());assertFalse(out.stream().anyMatch(item->item.thread()==100));}
+    @Test public void inputOrderDoesNotAffectRecentSelection(){List<LaunchInboxPolicy.Row> input=new ArrayList<>();for(int i=1;i<=40;i++)input.add(row(i,i,i,i%3==0));List<LaunchInboxPolicy.Row> expected=LaunchInboxPolicy.select(input);Collections.reverse(input);assertEquals(expected,LaunchInboxPolicy.select(input));}
+    @Test public void duplicateThreadKeepsNewestActualMessage(){List<LaunchInboxPolicy.Row> out=LaunchInboxPolicy.select(List.of(row(1,9,100,true),row(1,10,110,false),row(2,11,105,false)));assertEquals(2,out.size());assertEquals(10,out.get(0).id());assertEquals(1,out.get(0).thread());assertFalse(out.get(0).pinned());}
+    @Test public void aLaterDuplicateCanReenterTopTwenty(){List<LaunchInboxPolicy.Row> input=new ArrayList<>();for(int i=1;i<=21;i++)input.add(row(i,i,i,false));input.add(row(1,100,100,false));List<LaunchInboxPolicy.Row> out=LaunchInboxPolicy.select(input);assertEquals(1,out.get(0).thread());assertEquals(20,out.size());assertFalse(out.stream().anyMatch(item->item.thread()==2));}
+    @Test public void tiesAreDeterministicAndDoNotUsePins(){List<LaunchInboxPolicy.Row> out=LaunchInboxPolicy.select(List.of(row(1,10,100,true),row(2,12,100,false),row(3,11,100,true)));assertEquals(List.of(2L,3L,1L),out.stream().map(LaunchInboxPolicy.Row::thread).toList());}
+    @Test public void invalidIdentifiersAndTransportDoNotPersist(){assertEquals(0,LaunchInboxPolicy.select(List.of(row(0,1,1,false),row(1,0,1,false),row(1,1,-1,false),row(Long.MAX_VALUE,1,1,false),new LaunchInboxPolicy.Row(1,1,1,null,1,0,"","","",false,false,0,0))).size());}
+    @Test public void snippetsAreShortAndUnicodeSafe(){String source="x".repeat(239)+"😀trailing";String clipped=LaunchInboxPolicy.text(source,240);assertEquals(239,clipped.length());assertFalse(Character.isHighSurrogate(clipped.charAt(clipped.length()-1)));assertEquals("hello world",LaunchInboxPolicy.text("\nhello\u0000\t world\n",240));}
+    @Test public void revokingContactsRemovesOnlyTheStoredName(){LaunchInboxPolicy.Row original=row(1,1,1,false);LaunchInboxPolicy.Row scrubbed=LaunchInboxPolicy.scrub(original,false);assertEquals(original.address(),scrubbed.name());assertEquals(original.address(),scrubbed.address());assertEquals(original.body(),scrubbed.body());assertEquals(original.thread(),scrubbed.thread());}
+    @Test public void mediaSummaryRetainsActualBoundedText(){LaunchInboxPolicy.Row media=new LaunchInboxPolicy.Row(1,1,1,"mms",1,0,"+12025550100","Person","A fictional text-only MMS reply",true,true,132,1);LaunchInboxPolicy.Row summary=LaunchInboxPolicy.scrub(media,true);assertEquals("A fictional text-only MMS reply",summary.body());assertEquals(132,summary.mType());assertEquals(1,summary.box());}
+    @Test public void onlyBlankMediaSnippetsUseAttachmentFallback(){LaunchInboxPolicy.Row media=new LaunchInboxPolicy.Row(1,1,1,"mms",1,0,"+12025550100","Person"," \n",false,false,132,1);assertEquals("Media message",LaunchInboxPolicy.scrub(media,true).body());LaunchInboxPolicy.Row pending=new LaunchInboxPolicy.Row(1,1,1,"mms",1,0,"+12025550100","Person","",false,false,130,1);assertEquals("Media message — download pending",LaunchInboxPolicy.scrub(pending,true).body());}
+    @Test public void mediaCaptionsRemainBoundedAndContactRevocationKeepsText(){LaunchInboxPolicy.Row media=new LaunchInboxPolicy.Row(1,1,1,"mms",2,1,"+12025550100","Person","c".repeat(1000),false,false,128,2);LaunchInboxPolicy.Row scrubbed=LaunchInboxPolicy.scrub(media,false);assertEquals(240,scrubbed.body().length());assertEquals(media.address(),scrubbed.name());}
+    @Test public void longNamesAddressesAndBodiesStayBounded(){LaunchInboxPolicy.Row raw=new LaunchInboxPolicy.Row(1,1,1,"sms",1,0,"a".repeat(1000),"n".repeat(1000),"b".repeat(1000),false,false,0,0);LaunchInboxPolicy.Row sanitized=LaunchInboxPolicy.scrub(raw,true);assertEquals(80,sanitized.address().length());assertEquals(120,sanitized.name().length());assertEquals(240,sanitized.body().length());}
+    @Test public void emptyAuthoritativeInputProducesNoPreviewRows(){assertTrue(LaunchInboxPolicy.select(List.of()).isEmpty());}
+}

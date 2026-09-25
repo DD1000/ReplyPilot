@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-09-23T23:13:54.784372+00:00",
+  "results": [
+    {
+      "script": "tools/ui-cloud.cjs",
+      "passed": true,
+      "output": "PASS: cloud opt-in, separate saved samples, disabled automation, preserved drafts, no fake inference, pairing UI, redacted connection state, OpenAI request flow, failure and disconnect. Mocked UI only.",
+      "error": ""
+    },
+    {
+      "script": "tools/ui-nano-test.cjs",
+      "passed": true,
+      "output": "PASS: no fake browser Nano output; test form, bridge request, explicit failure, escaped replies, comparison limit, session clearing, no send/draft calls. Model inference remains untested.",
+      "error": ""
+    },
+    {
+      "script": "tools/ui-relationship.cjs",
+      "passed": true,
+      "output": "PASS: per-chat context, explicit save, persistence, clearing, escaping, draft preservation, unsaved edit retention, length bounds, honest demo labels, mobile layout.",
+      "error": ""
+    },
+    {
+      "script": "tools/ui-safety.cjs",
+      "passed": true,
+      "output": "PASS: rejected approval, escaped text, custom delay bounds, clean initial phone screenshot.",
+      "error": ""
+    },
+    {
+      "script": "tools/ui-security.cjs",
+      "passed": true,
+      "output": "PASS: hostile contact, SMS, MMS, draft, queue, profile and AI text stays inert; no external requests or send/save calls. Simulated bridge only.",
+      "error": ""
+    },
+    {
+      "script": "tools/ui-setup.cjs",
+      "passed": true,
+      "output": "PASS: role wait, denial, cancellation, launch failure, explicit Settings action, role gain/loss on resume, preserved draft, no sends, mobile layout. Simulated bridge only.",
+      "error": ""
+    },
+    {
+      "script": "tools/ui-smoke.cjs",
+      "passed": true,
+      "output": "PASS: editing, tone/redraft, scheduled acceptance, cancellation, saved preferences, search, empty media, mobile overflow, JavaScript runtime.",
+      "error": ""
+    },
+    {
+      "script": "tools/ui-style.cjs",
+      "passed": true,
+      "output": "PASS: style matching defaults on, preferences persist, sample count, opt-in-only automatic drafting, manual refinement, user edits preserved, mobile layout.",
+      "error": ""
+    }
+  ]
+}

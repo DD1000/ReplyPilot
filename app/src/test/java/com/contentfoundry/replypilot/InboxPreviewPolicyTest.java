@@ -1,0 +1,20 @@
+package com.contentfoundry.replypilot;
+
+import static org.junit.Assert.*;
+import org.junit.Test;
+
+public class InboxPreviewPolicyTest {
+    @Test public void textOnlyMmsKeepsItsActualMessage(){var text=new InboxPreviewPolicy.Snippet();text.add("application/smil","<smil><text src='text.txt'/></smil>");text.add("text/plain","I'll see you at six.");assertEquals("I'll see you at six.",text.result(132));}
+    @Test public void attachmentCaptionWinsOverGenericMediaLabel(){var text=new InboxPreviewPolicy.Snippet();text.add("image/jpeg","not text");text.add("text/plain","Look at this view!");assertEquals("Look at this view!",text.result(128));}
+    @Test public void trueAttachmentAndPendingDownloadsHaveHonestFallbacks(){var text=new InboxPreviewPolicy.Snippet();text.add("video/mp4","filename.mp4");assertEquals("Media message",text.result(132));assertEquals("Media message — download pending",new InboxPreviewPolicy.Snippet().result(130));}
+    @Test public void multipartTextPreservesOrderAndWhitespace(){var text=new InboxPreviewPolicy.Snippet();text.add("text/plain"," First\npart ");text.add("text/plain; charset=utf-8","Second part");text.add("TEXT/PLAIN","  Third");assertEquals("First part Second part Third",text.result(132));}
+    @Test public void smilAndHtmlAreNeverRenderedAsCaption(){var text=new InboxPreviewPolicy.Snippet();text.add("application/smil","<text>bogus</text>");text.add("text/html","<script>bad()</script>");assertEquals("Media message",text.result(132));}
+    @Test public void longCaptionIsBoundedWithoutSplittingEmoji(){var text=new InboxPreviewPolicy.Snippet();text.add("text/plain","x".repeat(239)+"😀extra");assertEquals(239,text.result(132).length());assertFalse(Character.isHighSurrogate(text.result(132).charAt(238)));}
+    @Test public void partScanCannotGrowWithoutBound(){var text=new InboxPreviewPolicy.Snippet();for(int i=0;i<64;i++)text.add("image/png","");assertTrue(text.full());text.add("text/plain","past bound");assertEquals("Media message",text.result(132));}
+    @Test public void distinguishesUnambiguousTransportAndRejectsConflictingOemFields(){assertEquals("sms",InboxPreviewPolicy.transport(2,0));assertEquals("mms",InboxPreviewPolicy.transport(0,2));assertEquals("",InboxPreviewPolicy.transport(2,2));assertEquals("",InboxPreviewPolicy.transport(0,0));}
+    @Test public void draftsAndMmsProtocolReportsCannotReplaceRecentText(){assertFalse(InboxPreviewPolicy.eligible("sms",3,0,0));for(int type:new int[]{129,131,133,134,135,136})assertFalse(InboxPreviewPolicy.eligible("mms",0,2,type));assertFalse(InboxPreviewPolicy.eligible("mms",0,3,128));assertTrue(InboxPreviewPolicy.eligible("sms",2,0,0));}
+    @Test public void queuedFailedAndRealMmsMessagesRemainVisible(){for(int type:new int[]{1,2,4,5,6})assertTrue(InboxPreviewPolicy.eligible("sms",type,0,0));for(int box:new int[]{1,2,4,5})for(int type:new int[]{128,130,132})assertTrue(InboxPreviewPolicy.eligible("mms",0,box,type));}
+    @Test public void summaryQueriesBindThreadAndFilterNonMessages(){assertEquals("thread_id=? AND type!=3",InboxPreviewPolicy.latest(19,"sms").selection());assertEquals(java.util.List.of("19"),InboxPreviewPolicy.latest(19,"sms").arguments());assertEquals("thread_id=? AND msg_box!=3 AND m_type IN (128,130,132)",InboxPreviewPolicy.latest(20,"mms").selection());assertEquals(java.util.List.of("20"),InboxPreviewPolicy.latest(20,"mms").arguments());assertThrows(IllegalArgumentException.class,()->InboxPreviewPolicy.latest(0,"sms"));}
+    @Test public void normalizedDateComparisonKeepsNewerSmsAheadOfOldMms(){long second=1_700_000_000L;var mms=new MediaHistoryPolicy.Position(MediaHistoryPolicy.date("mms",second),"mms",900);var sms=new MediaHistoryPolicy.Position(MediaHistoryPolicy.date("sms",second*1000+1),"sms",1);assertTrue(MediaHistoryPolicy.compare(sms,mms)>0);}
+    @Test public void sameMomentUsesExistingMixedTieOrderWithoutCrossTransportIdCollision(){var mms=new MediaHistoryPolicy.Position(1700000000000L,"mms",1);var sms=new MediaHistoryPolicy.Position(1700000000000L,"sms",10000);assertTrue(MediaHistoryPolicy.compare(mms,sms)>0);assertNotEquals(mms.key(),sms.key());}
+}

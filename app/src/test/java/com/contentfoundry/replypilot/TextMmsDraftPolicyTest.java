@@ -1,0 +1,21 @@
+package com.contentfoundry.replypilot;
+import org.junit.Test;
+import java.util.*;
+import static org.junit.Assert.*;
+public class TextMmsDraftPolicyTest {
+    private TextMmsDraftPolicy.Turn turn(int type,String body,boolean complete){return new TextMmsDraftPolicy.Turn(7,type,body,complete);}
+    @Test public void ordinaryTextMmsCarriesBothSidesAndAllFollowups(){var c=TextMmsDraftPolicy.context(7,List.of(turn(1,"Yo",true),turn(2,"What's up bro",true),turn(1,"How you been",true),turn(1,"Still working on that project?",true)),false);assertFalse(c.incomplete());assertEquals(4,c.messages().size());assertEquals(List.of("How you been","Still working on that project?"),c.unanswered());assertNull(TextMmsDraftPolicy.reason(c,false,false,"natural"));}
+    @Test public void unansweredAttachmentDoesNotBecomeAnEmptyText(){var c=TextMmsDraftPolicy.context(7,List.of(turn(2,"Hey",true),turn(1,"",false),turn(1,"What do you think?",true)),false);assertEquals("needs_review",TextMmsDraftPolicy.reason(c,false,false,"natural"));}
+    @Test public void incompleteEarlierBurstNeedsReview(){var c=TextMmsDraftPolicy.context(7,List.of(turn(1,"And that too",true)),true);assertTrue(c.incomplete());}
+    @Test public void decodedTextFailureNeedsReview(){var c=TextMmsDraftPolicy.context(7,List.of(turn(1,"partial",false)),false);assertEquals("needs_review",TextMmsDraftPolicy.reason(c,false,false,"natural"));}
+    @Test public void longUnansweredTextIsNeverTruncatedIntoApproval(){var c=TextMmsDraftPolicy.context(7,List.of(turn(1,"a".repeat(1601),true)),false);assertTrue(c.incomplete());}
+    @Test public void plansAndLocationRemainForOwner(){var c=TextMmsDraftPolicy.context(7,List.of(turn(1,"Want to meet tomorrow?",true)),false);assertEquals("plans_need_input",TextMmsDraftPolicy.reason(c,false,false,"natural"));var where=TextMmsDraftPolicy.context(7,List.of(turn(1,"Where are you?",true)),false);assertEquals("needs_review",TextMmsDraftPolicy.reason(where,false,false,"natural"));}
+    @Test public void girlfriendGoodnightStopsDraft(){var c=TextMmsDraftPolicy.context(7,List.of(turn(1,"Goodnight babe",true)),false);assertEquals("conversation_complete",TextMmsDraftPolicy.reason(c,false,false,"girlfriend"));}
+    @Test public void repeatAcknowledgmentStopsDraft(){var c=TextMmsDraftPolicy.context(7,List.of(turn(1,"okay",true),turn(2,"okay",true),turn(1,"alright",true)),false);assertEquals("conversation_complete",TextMmsDraftPolicy.reason(c,false,false,"always_reply"));}
+    @Test public void olderAnsweredAttachmentDoesNotBlockText(){var c=TextMmsDraftPolicy.context(7,List.of(turn(1,"",false),turn(2,"Nice picture",true),turn(1,"How was your day?",true)),false);assertFalse(c.incomplete());assertEquals(2,c.messages().size());}
+    @Test(expected=IllegalArgumentException.class) public void foreignContactIsRejected(){TextMmsDraftPolicy.context(7,List.of(new TextMmsDraftPolicy.Turn(8,1,"Hello",true)),false);}
+    @Test(expected=IllegalArgumentException.class) public void latestOutgoingIsNotAReplyTarget(){TextMmsDraftPolicy.context(7,List.of(turn(2,"already answered",true)),false);}
+    @Test public void failedOrUnsentRowsDoNotHidePlanningInAnUnansweredRun(){var c=TextMmsDraftPolicy.context(7,List.of(turn(2,"Hey",true),turn(1,"Want to meet tomorrow?",true),turn(0,"unsubmitted answer",true),turn(1,"What do you think?",true)),false);assertTrue(c.incomplete());assertEquals(2,c.unanswered().size());assertEquals("plans_need_input",TextMmsDraftPolicy.reason(c,false,false,"natural"));}
+    @Test public void unsentRowCannotHideEarlierAttachment(){var c=TextMmsDraftPolicy.context(7,List.of(turn(1,"",false),turn(0,"did not send",true),turn(1,"How about that?",true)),false);assertTrue(c.incomplete());}
+    @Test public void savedSourceMustMatchIdentityTextDateAndRecipient(){var source=new TextMmsDraftPolicy.Source(8,1000,"How you been","+12025550100");assertTrue(TextMmsDraftPolicy.sameSource(source,source));for(var changed:List.of(new TextMmsDraftPolicy.Source(9,1000,source.text(),source.address()),new TextMmsDraftPolicy.Source(8,2000,source.text(),source.address()),new TextMmsDraftPolicy.Source(8,1000,"changed",source.address()),new TextMmsDraftPolicy.Source(8,1000,source.text(),"+12025550101")))assertFalse(TextMmsDraftPolicy.sameSource(source,changed));assertFalse(TextMmsDraftPolicy.sameSource(source,null));}
+}

@@ -1,0 +1,13 @@
+*
+!package.json
+!core.mjs
+!plan-safety.mjs
+!location-context.mjs
+!girlfriend-mode.mjs
+!pilot-training.mjs
+!contact-guidance.mjs
+!server.mjs
+!Dockerfile
+
+!autopilot.mjs
+!history-learning.mjs

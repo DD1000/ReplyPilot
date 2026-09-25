@@ -1,0 +1,4 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <!-- Notification glyph: transparent outside the mark, no launcher tile. -->
+    <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M7,3H16C19.3,3 22,5.7 22,9V14C22,17.3 19.3,20 16,20H10L4,23L5,19C2.6,18.1 1,16 1,13V9C1,5.7 3.7,3 7,3Z M6,10.5L17,6.5L13,17L10.5,13L6,11.5Z" />
+</vector>

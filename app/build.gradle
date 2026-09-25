@@ -1,0 +1,42 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.contentfoundry.replypilot'
+    compileSdk 36
+    buildToolsVersion '36.0.0'
+    defaultConfig {
+        applicationId 'com.contentfoundry.replypilot'
+        minSdk 31
+        targetSdk 36
+        versionCode 64
+        versionName '0.11.0'
+        ndk { abiFilters 'arm64-v8a' }
+    }
+    signingConfigs {
+        debug {
+            def preservedKey = rootProject.file('.local-signing/debug.keystore')
+            if (preservedKey.exists()) storeFile = preservedKey
+        }
+    }
+    buildTypes {
+        release {
+            debuggable false
+            jniDebuggable false
+            // Preserve this private personal-install key so updates retain existing phone data.
+            signingConfig signingConfigs.debug
+        }
+    }
+    compileOptions { coreLibraryDesugaringEnabled true; sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    packaging { resources.excludes += ['META-INF/DEPENDENCIES', 'META-INF/INDEX.LIST'] }
+}
+dependencies {
+    // Used by link previews and location lookup, independently of AI.
+    implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    implementation 'com.squareup.okio:okio:3.6.0'
+    // jsoup only parses bounded downloaded markup; it never performs network requests.
+    implementation 'org.jsoup:jsoup:1.23.2'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs_nio:2.1.5'
+    implementation 'androidx.core:core:1.16.0'
+    implementation('com.klinkerapps:android-smsmms:5.2.6') { transitive = false }
+    implementation 'com.klinkerapps:logger:1.0.3'
+    testImplementation 'junit:junit:4.13.2'
+}

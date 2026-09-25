@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-09-23T23:14:17.550888+00:00",
+  "version": "0.6.2",
+  "versionCode": 9,
+  "sha256": "4326e539ff529205f42aaced3d2f387999dfb6b829727896656790a608ac3587",
+  "signerMatches0.6.1": true,
+  "signerSha256": "667cf8c2758f1a7674674c2308385b30e629260c6dd9f5d883b5b03f59ea8bdb",
+  "flags": {
+    "debuggable": "false (default)",
+    "testOnly": "false (default)",
+    "allowBackup": "false",
+    "usesCleartextTraffic": "false"
+  },
+  "permissionsUnchanged": true,
+  "zipAlignment16Kb": true,
+  "knownPhoneTokenAbsent": true,
+  "apiKeyPatternScan": "no matches; heuristic, not proof of all-secret absence",
+  "assetsMatchSource": true,
+  "exportedComponents": [
+    {
+      "type": "activity",
+      "name": "com.contentfoundry.replypilot.MainActivity",
+      "permission": null
+    },
+    {
+      "type": "receiver",
+      "name": "com.contentfoundry.replypilot.SmsReceiver",
+      "permission": "android.permission.BROADCAST_SMS"
+    },
+    {
+      "type": "receiver",
+      "name": "com.contentfoundry.replypilot.MmsReceiver",
+      "permission": "android.permission.BROADCAST_WAP_PUSH"
+    },
+    {
+      "type": "service",
+      "name": "com.contentfoundry.replypilot.RespondService",
+      "permission": "android.permission.SEND_RESPOND_VIA_MESSAGE"
+    },
+    {
+      "type": "receiver",
+      "name": "androidx.profileinstaller.ProfileInstallReceiver",
+      "permission": "android.permission.DUMP"
+    }
+  ]
+}
