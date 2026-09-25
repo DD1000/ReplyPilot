@@ -18,11 +18,12 @@ if [ -n "$NODE" ]; then
 else echo "Node isn't installed on this Mac, so tests were skipped (they already passed before this was saved)."; fi
 RAILWAY=$(find_tool railway)
 if [ -z "$RAILWAY" ]; then
-  NPM=$(find_tool npm)
-  [ -n "$NPM" ] || fail "Railway's command-line tool isn't installed. Install it with: brew install railway"
   echo "Installing Railway's command-line tool (one time)..."
-  "$NPM" install -g @railway/cli >/dev/null 2>&1 || fail "Could not install Railway's command-line tool. Install it with: brew install railway"
-  RAILWAY=$(find_tool railway); [ -n "$RAILWAY" ] || fail "Railway's command-line tool was installed but can't be found. Open a new Terminal window and try again."
+  BREW=$(find_tool brew)
+  if [ -n "$BREW" ]; then "$BREW" install railway || echo "Homebrew couldn't install it; trying npm instead."; fi
+  RAILWAY=$(find_tool railway)
+  if [ -z "$RAILWAY" ]; then NPM=$(find_tool npm); [ -n "$NPM" ] && "$NPM" install -g @railway/cli; RAILWAY=$(find_tool railway); fi
+  [ -n "$RAILWAY" ] || fail "Could not install Railway's command-line tool (see the messages above)."
 fi
 "$RAILWAY" whoami >/dev/null 2>&1 || { echo "Sign in to Railway in the browser window that opens."; "$RAILWAY" login || fail "Railway sign-in didn't finish."; }
 "$RAILWAY" link --project "$PROJECT" --service "$SERVICE" --environment production >/dev/null 2>&1 || "$RAILWAY" link --project "$PROJECT" --service "$SERVICE" || fail "Could not connect this folder to your Reply Pilot Railway project."
