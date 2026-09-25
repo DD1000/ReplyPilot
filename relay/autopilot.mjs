@@ -16,3 +16,21 @@ export function validateAutopilotResult(value){
  if(value.attentionNeeded?!attentionReasons.has(value.attentionReason):value.attentionReason!=='')throw new TypeError('Invalid attention result.');
  return {...value,body};
 }
+
+// Plan deferrals. The phone counts how many times Autopilot already put off
+// plans since the owner last replied: 0 or 1 here. After two it stays quiet
+// and alerts the owner instead of asking the relay again.
+const planDeferralTexts=[
+ ['Not sure yet, let me get back to you.','Let me see and get back to you.','Not sure yet, give me a bit.'],
+ ['Still figuring it out, give me a little bit.','Still working it out, hang tight.','Haven’t figured it out yet, give me a bit.']
+];
+// Letters and digits only: "Not sure yet, give me a bit!" repeats "not sure yet give me a bit".
+const comparable=text=>String(text).normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu,'').replace(/\s+/gu,' ').trim();
+export function repeatsEarlier(body,earlier){const value=comparable(body);return earlier.some(text=>comparable(text)===value);}
+export function planDeferralFallback(count,earlier=[]){
+ const options=planDeferralTexts[count>0?1:0];
+ return{decision:'reply',reason:'reply_needed',body:options.find(text=>!repeatsEarlier(text,earlier))??options[0],attentionNeeded:true,attentionReason:'plans'};
+}
+export function planDeferralInstructions(count){
+ return ` Plan deferral: the newest incoming messages try to make or pin down plans and the owner has not decided. Write ONE short, casual, noncommittal deferral in the owner's own voice for this contact: follow persona.writingStyle and the owner's real "me" messages for length, casing, slang and punctuation. Do not accept, decline, suggest or confirm anything. Do not give a time, day, place, availability, excuse or reason, do not ask a scheduling question, and do not promise to call, text or check at any time. Avoid stock lines such as "Let me get back to you on that.", "I'll let you know in a bit.", "I'll get back to you" or "I'll text you"; wording like "not sure yet" or "give me a bit", adapted to the owner's style, is fine. Never repeat or lightly reword any earlier message in history. Set attentionNeeded true and attentionReason "plans".${count>0?' Autopilot already put this off once and the contact is asking again: briefly acknowledge that they are still waiting, in clearly different words from the earlier deferral, without a long apology or any new details.':''}`;
+}

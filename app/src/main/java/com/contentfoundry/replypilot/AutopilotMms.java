@@ -76,15 +76,29 @@ final class AutopilotMms {
         TextMmsDrafts.History history=TextMmsDrafts.history(c,thread,id,source.address());
         String reason=AutopilotPolicy.incoming(history.context().unanswered(),false,history.context().incomplete()||!source.textOnly());
         AutopilotPolicy.Reply reply;
+        // Same plan rule as text replies: two different AI deferrals, then quiet alerts.
+        boolean planning="plans".equals(reason);int deferrals=0;List<String> sent=List.of();
+        if(planning){
+            deferrals=AutomaticReplies.planDeferrals(c,thread);
+            if(!PlanDeferralPolicy.reply(deferrals)){
+                synchronized(PilotApp.SEND_LOCK){
+                    if(!same(source,capture(c,thread,id,receipt,0))||block(c,source,0)!=null)return;
+                    Sender.silenceAutomaticForThread(c,thread,AutomaticReplyPolicy.message("plans_need_input"));MessageChanges.publish();
+                }
+                AutomaticReplies.quietPlans(c,thread,source.address());return;
+            }
+            reason=null;sent=AutomaticReplies.recentSent(c,thread);
+        }
         if(reason!=null)reply=AutopilotPolicy.fallback(reason);
         else{
             JSONObject request=CloudDrafts.payload(thread,history.context().messages(),ContactGuidance.context(profile.optString("body"),profile.optString("importantDetails"),"always_reply"),profile.optString("samples"),"Use AI intuition",true)
                 .put("automatic",true).put("autopilot",true).put("automationReady",true).put("engagement","always_reply").put("persona",Personas.forReply(c,thread)).put("approvedExamples",ApprovedLearning.examples(c,thread));
+            if(planning)request.put("planDeferral",new JSONObject().put("count",PlanDeferralPolicy.requestCount(deferrals)));
             if(!Personas.unchanged(c,thread,learning)||!same(source,capture(c,thread,id,receipt,0))||block(c,source,0)!=null)return;
             JSONObject response;
             try{response=CloudClient.request(config,"/draft",request);}
-            catch(Exception unavailable){response=new JSONObject().put("decision","reply").put("reason","reply_needed").put("body",AutopilotPolicy.fallback("model_unavailable").body()).put("attentionNeeded",true).put("attentionReason","model_unavailable");}
-            reply=AutopilotPolicy.response(response.opt("decision"),response.opt("reason"),response.opt("body"),response.opt("attentionNeeded"),response.opt("attentionReason"),null);
+            catch(Exception unavailable){response=planning?new JSONObject().put("decision","reply").put("reason","reply_needed").put("body",PlanDeferralPolicy.fallback(deferrals,sent)):new JSONObject().put("decision","reply").put("reason","reply_needed").put("body",AutopilotPolicy.fallback("model_unavailable").body()).put("attentionNeeded",true).put("attentionReason","model_unavailable");}
+            reply=planning?AutopilotPolicy.planDeferral(response.opt("decision"),response.opt("reason"),response.opt("body"),deferrals,sent):AutopilotPolicy.response(response.opt("decision"),response.opt("reason"),response.opt("body"),response.opt("attentionNeeded"),response.opt("attentionReason"),null);
         }
         if(!history.fingerprint().equals(TextMmsDrafts.history(c,thread,id,source.address()).fingerprint()))return;
         synchronized(PilotApp.SEND_LOCK){

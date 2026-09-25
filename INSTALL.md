@@ -1,18 +1,23 @@
-# Install Reply Pilot 0.12.0
+# Install Reply Pilot 0.12.1
 
 ## 1. Update the server
 
-Double-click **Update Server.command** in the project folder. It runs the server tests, then uploads `relay/` to your Reply Pilot project on Railway using your Mac's Railway sign-in (it offers to sign in or install Railway's tool if needed). Your OpenAI key and phone token stay in Railway; no new variables are needed. The log is saved as `server-update-log.txt`. Older 0.11.x phones keep working with the updated server.
+Double-click **Update Server.command** in the project folder. It runs the server tests, then uploads `relay/` to your Reply Pilot project on Railway using your Mac's Railway sign-in (it offers to sign in or install Railway's tool if needed). Your OpenAI key and phone token stay in Railway; no new variables are needed. The log is saved as `server-update-log.txt`. Older 0.11.x and 0.12.0 phones keep working with the updated server.
 
 ## 2. Build the app
 
-Double-click **Build Reply Pilot.command**. It uses Java 21 and the Android SDK in `~/Library/Android`, runs the unit tests, and saves `dist/Reply-Pilot-0.12.0.apk`, checking that it's signed with your phone's key (`.local-signing/` must stay in place). The log is saved as `build-log.txt`.
+Double-click **Build Reply Pilot.command**. It uses Java 21 and the Android SDK in `~/Library/Android`, runs the unit tests, and saves `dist/Reply-Pilot-0.12.1.apk`, checking that it's signed with your phone's key (`.local-signing/` must stay in place). The log is saved as `build-log.txt`.
 
 ## 3. Install on the Pixel
 
-Quick Share **Reply-Pilot-0.12.0.apk** from `dist/`, open it in Files by Google, and install it as an update; **do not uninstall**. Settings shows **Version 0.12.0** (version code 66). Then open a chat → Reply setup → **Train Autopilot**. After training, choose Autopilot and save.
+Quick Share **Reply-Pilot-0.12.1.apk** from `dist/`, open it in Files by Google, and install it as an update; **do not uninstall**. Settings shows **Version 0.12.1** (version code 67). Your trained chats and Autopilot choices stay as they were. Then go to Settings → Phone setup → **Reply while locked → Allow** and approve Android's prompt.
 
-## New in 0.12.0
+## New in 0.12.1
+
+- Plan questions: the first gets an AI brush-off in your voice, the second one different follow-up, and after that Autopilot stays quiet and alerts you until you reply. No more repeating the same line.
+- **Reply while locked → Allow** (Settings, and in Autopilot chats until allowed) lets Autopilot reply promptly while the phone is locked. Android asks once.
+
+## Previous release: 0.12.0
 
 - Per-chat **Train Autopilot**: reads the most recent 1,000 texts with that person once, when you tap it, and saves an encrypted persona on the phone. View, retrain or remove it in Reply setup.
 - Autopilot can only be on for trained chats. The 0.11.0 whole-phone history preparation is removed and its saved summaries are deleted.

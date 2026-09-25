@@ -1,18 +1,24 @@
-# Reply Pilot 0.12.0 — Android personal preview
+# Reply Pilot 0.12.1 — Android personal preview
 
 An Android SMS/MMS app with per-chat **Train Autopilot**. Tap the send arrow to send manually or hold it to choose Instant, 1 minute or 5 minutes. For each chat you choose, Autopilot learns how you text that person and replies in your voice; it defers decisions and plans and alerts you when a chat needs attention. The APK contains no OpenAI key; your paired HTTPS service holds it.
 
 Training is per chat and only starts when you tap **Train Autopilot** in that chat's Reply setup. The phone reads your most recent 1,000 SMS/MMS texts with that person, the service asks the training model (GPT-6 Astra by default) once, and the phone saves the resulting persona encrypted in private storage: how you text them, the relationship, ongoing context, things to avoid, and up to 30 of your real replies as examples. Each Autopilot reply sends that persona and the recent conversation to the reply model (GPT-6 Sol by default). Nothing about a chat goes to the service until you train it. This is contextual memory, not model training. RCS chats are not available to this app.
 
-**Status:** personal preview, version 0.12.0 (version code 66). The existing draft service is deployed to Railway, and the user previously reported successful phone pairing and test replies. See **VALIDATION.md** for completed checks by version. Carrier, background-send and physical Pixel media/codec tests remain outstanding. The browser preview uses synthetic data. ARM64 Android 12+; compile/target SDK 36. Pixel 11 compatibility requires testing on the actual phone.
+**Status:** personal preview, version 0.12.1 (version code 67). The existing draft service is deployed to Railway, and the user previously reported successful phone pairing and test replies. See **VALIDATION.md** for completed checks by version. Carrier, background-send and physical Pixel media/codec tests remain outstanding. The browser preview uses synthetic data. ARM64 Android 12+; compile/target SDK 36. Pixel 11 compatibility requires testing on the actual phone.
 
-## New in 0.12.0
+## New in 0.12.1
+
+- **Autopilot no longer repeats itself about plans.** Before, every plan question got the same fixed text (“I'll let you know in a bit.”), again and again. Now the first plan push gets a short brush-off written by the AI in your voice for that chat, and a second push gets one different follow-up. From the third push on, Autopilot stays quiet and alerts you each time (“Chat needs attention”) until you reply yourself. It still never agrees to, declines or suggests a time, and a deferral never repeats a text already in the chat. Plan deferrals more than 12 hours old, or from before your own last reply, don't count.
+- **Replies while the phone is locked.** Android can hold background work until you unlock the phone, which delays Autopilot. Settings → Phone setup has **Reply while locked → Allow**, and an Autopilot chat shows the same prompt until you allow it. Android asks once; afterwards Autopilot's reply jobs also run at high priority.
+- Requires the 0.12.1 server update (`Update Server.command`) for AI-written deferrals; with an older server the phone uses its own varied deferrals. Install over 0.12.0 without clearing storage. One new Android permission lets the app ask for the battery exemption; nothing changes until you tap Allow.
+
+## Previous release: 0.12.0
 
 - **Train Autopilot, one chat at a time.** Reply setup has a Train Autopilot panel. Tap it to build that person's persona from your most recent 1,000 texts together (usually under a minute). You can see what it learned, retrain anytime, or remove the training. After about 1,000 new texts the app suggests retraining; chats with under 100 texts show that the persona will be thin.
 - **Autopilot requires training.** Autopilot can only be turned on for a trained chat, and removing training stops it. Training never turns Autopilot on by itself. Explicit Draft reply and Understand & reply still work for untrained chats and are reviewed before sending.
 - **The whole-phone history pass is gone.** 0.11.0 sent every conversation to OpenAI before any AI reply worked and paused all AI until it finished. 0.12.0 deletes those old all-conversation summaries from the phone on first launch.
 - **Models:** training uses `OPENAI_TRAINING_MODEL` (default `gpt-6-astra`) and falls back to the reply model if your key can't use it; replies use `OPENAI_MODEL` (default `gpt-6-sol`).
-- Requires the 0.12.0 server update (`Update Server.command`). Install over 0.11.x without clearing storage. No new phone permission.
+- Required the 0.12.0 server update. Installed over 0.11.x without clearing storage. No new phone permission.
 
 ## Previous release: 0.11.1
 

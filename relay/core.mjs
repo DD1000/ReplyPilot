@@ -1,5 +1,5 @@
 import { timingSafeEqual,createHash } from 'node:crypto';
-import {autopilotInstructions,autopilotFormat,autopilotFallback,validateAutopilotResult} from './autopilot.mjs';
+import {autopilotInstructions,autopilotFormat,autopilotFallback,validateAutopilotResult,planDeferralFallback,planDeferralInstructions,repeatsEarlier} from './autopilot.mjs';
 import {validateHistoryAnalysis,historyAnalysisInstructions,historyAnalysisFormat,validateHistoryAnalysisResult,validateHistoryMemory,historyMemoryInstructions} from './history-learning.mjs';
 import {planReason,unansweredTexts} from './plan-safety.mjs';
 import {validatePersonaTraining,personaTrainingContent,personaTrainingFormat,personaTrainingInstructions,validatePersonaTrainingResult,validatePersona,personaInstructions} from './persona.mjs';
@@ -91,6 +91,10 @@ function isClosingAcknowledgment(input){
  if(repeatedAcknowledgment(input.history))return true;
  return input.engagement==='natural'&&input.history.at(-2)?.speaker==='me'&&acknowledgment(input.history.at(-1).text);
 }
+function claimsWhereabouts(text){
+ const value=text.normalize('NFKC').toLowerCase().replace(/[’‘]/gu,"'");
+ return /\b(?:i(?:'m| am)|we(?:'re| are))\s+(?:at\s|near\s|in\s|(?:back\s+)?home\b)/u.test(value);
+}
 function normalizedReply(text){
  return text.normalize('NFKC').toLowerCase().replace(/['’‘]/gu,'').replace(/\s+/gu,' ').trim().replace(/[.!?…]+$/u,'').trim();
 }
@@ -172,6 +176,7 @@ export function validateInput(raw,{media=false}={}) {
  const insideJokes=raw.insideJokes===undefined?'':raw.insideJokes;
  bounded(insideJokes,2000,'Inside jokes');
  const locationContext=raw.locationContext===undefined?undefined:validateLocation(raw.locationContext);
+ const planDeferral=validatePlanDeferral(raw.planDeferral);
  if(!Array.isArray(raw.history)||raw.history.length<(media?0:1)||raw.history.length>50)throw new PublicError(400,media?'Use up to fifty recent messages.':'Include one to fifty recent messages.');
  let unansweredStart=raw.history.length;while(unansweredStart>0&&raw.history[unansweredStart-1]?.speaker==='them')unansweredStart--;
  const history=raw.history.map((m,index)=>{
@@ -190,7 +195,13 @@ export function validateInput(raw,{media=false}={}) {
  if(!matchStyle&&history.length>Math.max(8,history.length-unansweredStart))throw new PublicError(400,'History matching is off; include up to eight recent messages or the complete unanswered sequence.');
  // Already-installed phones omitted this field and may auto-send the response.
  const automatic=raw.automatic??true;
- return{...(raw.autopilot!==undefined?{autopilot:raw.autopilot}:{}),...(historyMemory?{historyMemory}:{}),...(persona?{persona}:{}),relationship,samples,tone:learned?(engagement==='girlfriend'?'Warm':'Use AI intuition'):tone,engagement,personality,humorLevel:learned?0:humorLevel,insideJokes:learned?'':insideJokes,...(learned?{styleMode:'learned'}:{}),approvedExamples,pilotTraining,messageMeanings,...(ownerInterpretation?{ownerInterpretation}:{}),...(locationContext?{locationContext}:{}),history,style:matchStyle?style.map(x=>bounded(x,220,'Style example')):[],matchStyle,automatic,automationReady:raw.automationReady===true};
+ return{...(raw.autopilot!==undefined?{autopilot:raw.autopilot}:{}),...(historyMemory?{historyMemory}:{}),...(persona?{persona}:{}),relationship,samples,tone:learned?(engagement==='girlfriend'?'Warm':'Use AI intuition'):tone,engagement,personality,humorLevel:learned?0:humorLevel,insideJokes:learned?'':insideJokes,...(learned?{styleMode:'learned'}:{}),approvedExamples,pilotTraining,messageMeanings,...(ownerInterpretation?{ownerInterpretation}:{}),...(locationContext?{locationContext}:{}),...(planDeferral?{planDeferral}:{}),history,style:matchStyle?style.map(x=>bounded(x,220,'Style example')):[],matchStyle,automatic,automationReady:raw.automationReady===true};
+}
+// How many times Autopilot already put off plans since the owner last replied (phone-counted).
+function validatePlanDeferral(raw){
+ if(raw===undefined)return undefined;
+ if(!raw||typeof raw!=='object'||Array.isArray(raw)||Object.keys(raw).join(',')!=='count'||![0,1].includes(raw.count))throw new PublicError(400,'Invalid plan deferral.');
+ return{count:raw.count};
 }
 export function authorized(header, token) {
  const a=Buffer.from(header??''),b=Buffer.from(`Bearer ${token}`);
@@ -328,6 +339,8 @@ export function createRelay({apiKey,token,model='gpt-6-sol',trainingModel='gpt-6
   let input;try{input=personaTraining?validatePersonaTraining(body):analyzing?validateHistoryAnalysis(body):training?validateTrainingInput(body):media?validateMediaInput(body):validateInput(body);}catch(error){if(error instanceof PublicError)throw error;throw new PublicError(400,personaTraining&&error instanceof TypeError?error.message:'Invalid history analysis request.');}
   const autopilot=!media&&!training&&!analyzing&&!personaTraining&&input.autopilot===true,joke=input.ownerInterpretation==='joke';
   const unanswered=personaTraining?[]:[...unansweredTexts(input.history),...(media&&input.caption?[input.caption]:[])],locationQuestion=isLocationQuestion(unanswered);
+  // A plan push the phone allows Autopilot to answer: an AI deferral in the owner's voice.
+  const planning=autopilot&&!!input.planDeferral&&!!planReason(unanswered,null),earlier=planning?input.history.filter(turn=>turn.speaker==='me').map(turn=>turn.text):[];
   const bedtime=(media||input.engagement==='girlfriend')&&girlfriendPaused(unanswered,acknowledgment);
   if(typeof body.requestId!=='string'||!/^[a-zA-Z0-9-]{16,80}$/.test(body.requestId))throw new PublicError(400,'Invalid request identifier.');
   const stamp=now();for(const [id,item] of cache)if(stamp-item.created>300000)cache.delete(id);
@@ -347,10 +360,10 @@ export function createRelay({apiKey,token,model='gpt-6-sol',trainingModel='gpt-6
     if(autopilot){
      const checked=result=>({...result,engine:'Reply Pilot · Autopilot',elapsedMs:now()-stamp});
      if(input.automatic&&!input.automationReady)return checked(noReply('insufficient_history'));
-     if(planReason(unanswered,null))return checked(autopilotFallback('plans'));
-     if(locationQuestion&&!freshLocation(input.locationContext,now()))return checked(autopilotFallback('personal_info'));
-     if(unanswered.some(assistantRequest)||assistantRequest(unanswered.join(' ')))return checked(autopilotFallback('uncertain'));
-     if(locationQuestion&&isBareLocationQuestion(unanswered)){
+     if(!planning&&planReason(unanswered,null))return checked(autopilotFallback('plans'));
+     if(!planning&&locationQuestion&&!freshLocation(input.locationContext,now()))return checked(autopilotFallback('personal_info'));
+     if(!planning&&(unanswered.some(assistantRequest)||assistantRequest(unanswered.join(' '))))return checked(autopilotFallback('uncertain'));
+     if(!planning&&locationQuestion&&isBareLocationQuestion(unanswered)){
       const body=`I'm ${input.locationContext.label}.`;
       return checked(unsuitableReply(body)||!freshLocation(input.locationContext,now())||!locationOnlyReply(body,input.locationContext.label)?autopilotFallback('personal_info'):{decision:'reply',reason:'reply_needed',body,attentionNeeded:false,attentionReason:''});
      }
@@ -370,7 +383,7 @@ export function createRelay({apiKey,token,model='gpt-6-sol',trainingModel='gpt-6
      return{...result,engine:'Reply Pilot · approved location',elapsedMs:now()-stamp};
     }
     }
-    const providerInput={...input};delete providerInput.personality;if(!locationQuestion)delete providerInput.locationContext;
+    const providerInput={...input};delete providerInput.personality;delete providerInput.planDeferral;if(!locationQuestion||planning)delete providerInput.locationContext;
     if(input.styleMode==='learned'){delete providerInput.humorLevel;delete providerInput.insideJokes;delete providerInput.tone;}
     if(input.autopilot===true)for(const key of ['tone','engagement','humorLevel','insideJokes','pilotTraining','messageMeanings','ownerInterpretation'])delete providerInput[key];
     let content=JSON.stringify(providerInput);
@@ -383,7 +396,7 @@ export function createRelay({apiKey,token,model='gpt-6-sol',trainingModel='gpt-6
     }
     const response=await fetchImpl('https://api.openai.com/v1/responses',{
      method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},redirect:'error',signal:AbortSignal.timeout(45000),
-     body:JSON.stringify({model,store:false,instructions:analyzing?historyAnalysisInstructions:autopilot?autopilotInstructions+(input.persona?personaInstructions:''):media&&input.autopilot===true?mediaInstructions+historyMemoryInstructions+approvedExamplesInstructions+contactDetailsInstructions+(input.persona?personaInstructions:''):training?trainingInstructions+contactDetailsInstructions+(input.styleMode==='learned'?learnedPracticeInstructions:''):writingInstructions(input)+(input.historyMemory?historyMemoryInstructions:'')+(input.persona?personaInstructions:'')+(media?'\n'+mediaInstructions:''),input:content,text:{format:analyzing?historyAnalysisFormat:autopilot?autopilotFormat:training?trainingFormat:media?mediaFormat:replyFormat},reasoning:{effort:'none'},max_output_tokens:analyzing?1600:training?500:media?700:autopilot?420:320})
+     body:JSON.stringify({model,store:false,instructions:analyzing?historyAnalysisInstructions:autopilot?autopilotInstructions+(input.persona?personaInstructions:'')+(planning?planDeferralInstructions(input.planDeferral.count):''):media&&input.autopilot===true?mediaInstructions+historyMemoryInstructions+approvedExamplesInstructions+contactDetailsInstructions+(input.persona?personaInstructions:''):training?trainingInstructions+contactDetailsInstructions+(input.styleMode==='learned'?learnedPracticeInstructions:''):writingInstructions(input)+(input.historyMemory?historyMemoryInstructions:'')+(input.persona?personaInstructions:'')+(media?'\n'+mediaInstructions:''),input:content,text:{format:analyzing?historyAnalysisFormat:autopilot?autopilotFormat:training?trainingFormat:media?mediaFormat:replyFormat},reasoning:{effort:'none'},max_output_tokens:analyzing?1600:training?500:media?700:autopilot?420:320})
     });
     if(!response.ok){await response.body?.cancel();const status=response.status;
      if(status===401||status===403)throw new PublicError(503,'Check the OpenAI key and model access on the server.');
@@ -395,17 +408,21 @@ export function createRelay({apiKey,token,model='gpt-6-sol',trainingModel='gpt-6
     if(training)return extractTraining(JSON.parse(raw));
     if(autopilot){
      let result=validateAutopilotResult(responseObject(JSON.parse(raw)));
+     if(planning){
+      // Never a commitment, a claimed whereabouts, or a repeat of anything already sent.
+      const unsafe=planReason([],result.body)||unsuitableReply(result.body)||repeatsEarlier(result.body,earlier)||claimsWhereabouts(result.body);
+      return{...(unsafe?planDeferralFallback(input.planDeferral.count,earlier):{...result,attentionNeeded:true,attentionReason:'plans'}),engine:`OpenAI · ${model}`,elapsedMs:now()-stamp};
+     }
      if(planReason([],result.body))result=autopilotFallback('plans');
      if(locationQuestion&&(!freshLocation(input.locationContext,now())||!locationOnlyReply(result.body,input.locationContext.label)))result=autopilotFallback('personal_info');
      return {...result,engine:`OpenAI · ${model}`,elapsedMs:now()-stamp};
     }
     if(media){
      const result=extractMedia(JSON.parse(raw),input.mediaType);
-     const candidate=result.suggestion.normalize('NFKC').toLowerCase().replace(/[’‘]/gu,"'");
      let reason=bedtime?'conversation_complete':planReason(unanswered,null)?'plans_need_input':
       locationQuestion||unanswered.some(assistantRequest)||assistantRequest(unanswered.join(' '))?'needs_review':null;
      if(!reason&&result.suggestion&&planReason([],result.suggestion))reason='plans_need_input';
-     if(!reason&&result.suggestion&&/\b(?:i(?:'m| am)|we(?:'re| are))\s+(?:at\s|near\s|in\s|(?:back\s+)?home\b)/u.test(candidate))reason='needs_review';
+     if(!reason&&result.suggestion&&claimsWhereabouts(result.suggestion))reason='needs_review';
      if(reason){result.suggestion='';result.reason=reason;}
      return{...result,engine:`OpenAI · ${model}`,elapsedMs:now()-stamp};
     }
@@ -413,7 +430,7 @@ export function createRelay({apiKey,token,model='gpt-6-sol',trainingModel='gpt-6
     if(result.decision==='reply'&&planReason(joke?[]:unanswered,result.body))result=noReply('plans_need_input');
     if(result.decision==='reply'&&locationQuestion&&(!freshLocation(input.locationContext,now())||!locationOnlyReply(result.body,input.locationContext.label)))result=noReply('needs_review');
     return{...result,engine:`OpenAI · ${model}`,elapsedMs:now()-stamp};
-   }catch(error){if(autopilot)return {...autopilotFallback('model_unavailable'),engine:'Reply Pilot · fallback',elapsedMs:now()-stamp};if(error instanceof PublicError)throw error;throw new PublicError(502,'The AI request could not finish. Check the connection and try again.');}
+   }catch(error){if(autopilot)return {...(planning?planDeferralFallback(input.planDeferral.count,earlier):autopilotFallback('model_unavailable')),engine:'Reply Pilot · fallback',elapsedMs:now()-stamp};if(error instanceof PublicError)throw error;throw new PublicError(502,'The AI request could not finish. Check the connection and try again.');}
    finally{inflight--;}
   })();
   const entry={created:stamp,input:encoded,promise};cache.set(body.requestId,entry);

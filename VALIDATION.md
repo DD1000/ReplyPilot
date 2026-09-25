@@ -1,4 +1,21 @@
-# Validation record — 0.11.1
+# Validation record — 0.12.1
+
+## 0.12.1 Plan deferrals and locked-phone replies — 2026-09-25
+
+- Cause of the repeated “I'll let you know in a bit.”: every plan message was short-circuited on the phone (and on the relay) to one fixed text without calling the model, so each new push got the same line. Now the phone counts Autopilot's plan deferrals in the chat since the owner's own latest reply (manual send or manual takeover) and within 12 hours: 0 or 1 → the relay writes a deferral in the owner's voice (`planDeferral.count`), 2 or more → no reply, a `plans_need_input` decision and a **Chat needs attention** alert on every further push until the owner replies. Model output that is a commitment, claims whereabouts, is too long or repeats an earlier sent text is replaced by a varied fallback that also skips texts already in the chat.
+- Cloud checks (the Mac build is still to run): main sources compile against Android SDK 36 stubs with flow analysis; the only errors are the unavailable okhttp/jsoup/androidx/MMS-library classes in untouched files. **624 JVM unit tests** pass, including new `PlanDeferralPolicyTest` (5); the two tests needing okhttp/Android runtime are left to Gradle on the Mac.
+- Relay: **159 tests** pass, including new `plan-deferral.test.mjs` (7): old fixed path unchanged without `planDeferral`, AI deferral with forced `plans` attention, count-1 instructions, unsafe/repeated/whereabouts/long output and provider failure falling back, strict validation, non-plan messages unaffected, untrained chats still gated. No new relay module, so the Dockerfile list is unchanged.
+- Browser: new `tools/ui-battery.cjs` passes (Settings **Reply while locked** row, Autopilot-chat note shown only while Autopilot is selected, one-time Android prompt, Allowed state, hidden when an older phone build omits the flag). `ui-train-autopilot`, `ui-autopilot-simple` and `ui-sim-help` still pass.
+- Android: new normal permission `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`; the snapshot reports `PowerManager.isIgnoringBatteryOptimizations`; **Allow** opens Android's one-time prompt (falling back to the battery list, then App info). Reply jobs (`DraftJob`, three builders) use `JobInfo.PRIORITY_HIGH` on Android 13+; they are not expedited because they need a minimum latency for burst collection.
+- Physical Pixel checks remain: the plan sequence with a real contact (two different deferrals, then silence with alerts), a manual reply resetting it, and Autopilot replies with the screen locked after allowing the exemption.
+
+## 0.12.0 Train Autopilot — 2026-09-25
+
+- Built on the owner's Mac with `Build Reply Pilot.command`: `testReleaseUnitTest` and `assembleRelease` passed, **646 unit tests** with zero failures. APK `dist/Reply-Pilot-0.12.0.apk` (version code 66), SHA-256 `2c9b135a975ef3eaa19d017584fa14167355a68d44068174c41430d579b2bb4e`; `tools/check-apk-signer.py` confirmed the owner's signer `667cf8c2…8bdb`.
+- Relay: **152 tests** passed, including `persona.test.mjs` (11). `Update Server.command` deployed to Railway (deployment `d3339394-6f49-4e56-923c-e66fb863995a`) and the service answered afterwards.
+- Browser: `ui-train-autopilot` and updated `ui-autopilot-simple` passed with fictional data. `tools/check-personas.py` exercised the encrypted persona store schema.
+
+## 0.11.1 Sending SIM recovery — 2026-09-25
 
 ## 0.11.1 Sending SIM recovery — 2026-09-25
 

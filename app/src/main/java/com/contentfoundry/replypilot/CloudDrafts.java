@@ -55,6 +55,21 @@ public final class CloudDrafts {
         List<String> incomingRun=Messages.unanswered(c,thread,base);
         String attentionReason=AutopilotPolicy.incoming(incomingRun,location.payload()!=null,incomingRun.size()>CloudPrompt.RECENT_LIMIT||incomingRun.stream().anyMatch(x->x.length()>1600));
         AutopilotPolicy.Reply reply;boolean insufficientHistory=false;
+        // Plans: the first two pushes get an AI deferral in the owner's voice, each worded
+        // differently. After that Autopilot stays quiet and alerts the owner until they reply.
+        boolean planning="plans".equals(attentionReason);int deferrals=0;List<String> sent=List.of();
+        if(planning){
+            deferrals=AutomaticReplies.planDeferrals(c,thread);
+            if(background&&!PlanDeferralPolicy.reply(deferrals)){
+                synchronized(PilotApp.SEND_LOCK){
+                    if(!ManualTakeover.unchanged(c,thread,manualRevision)||ManualTakeover.blocked(c,thread)||Messages.latest(c,thread)!=base||store.replyDecision(thread,base)!=null)return;
+                    if(!SleepSession.generationAllowed(c,base,sleepRevision)||!IncomingBurst.unchanged(c,thread,base,burstAddress,burstToken))return;
+                    AutomaticReplies.record(c,thread,base,"plans_need_input");
+                }
+                AutomaticReplies.quietPlans(c,thread,burstAddress);return;
+            }
+            attentionReason=null;sent=AutomaticReplies.recentSent(c,thread);
+        }
         if(attentionReason!=null)reply=AutopilotPolicy.fallback(attentionReason);
         else{
             List<ReplyPrompt.Message> context=matchStyle?RecentContext.refresh(c,thread).messages():ReplyAgent.promptHistory(Messages.history(c,thread));
@@ -62,7 +77,8 @@ public final class CloudDrafts {
                 .put("automatic",background).put("autopilot",true).put("automationReady",Personas.ready(c,thread))
                 .put("engagement","always_reply").put("styleMode","learned").put("persona",Personas.forReply(c,thread));
             if(matchStyle)request.put("approvedExamples",ApprovedLearning.examples(c,thread));
-            if(location.payload()!=null)request.put("locationContext",location.payload());
+            if(planning)request.put("planDeferral",new JSONObject().put("count",PlanDeferralPolicy.requestCount(deferrals)));
+            else if(location.payload()!=null)request.put("locationContext",location.payload());
             if(background&&(!SleepSession.generationAllowed(c,base,sleepRevision)||!IncomingBurst.unchanged(c,thread,base,burstAddress,burstToken)))return;
             if(!ManualTakeover.unchanged(c,thread,manualRevision)||ManualTakeover.blocked(c,thread)||!Personas.unchanged(c,thread,learningToken))return;
             AutomaticReplies.requireSettledMms();
@@ -70,12 +86,13 @@ public final class CloudDrafts {
             try{response=CloudClient.request(config,"/draft",request);}
             catch(Exception error){
                 if(background&&(!SleepSession.generationAllowed(c,base,sleepRevision)||!IncomingBurst.unchanged(c,thread,base,burstAddress,burstToken)))return;
-                response=new JSONObject().put("decision","reply").put("reason","reply_needed").put("body",AutopilotPolicy.fallback("model_unavailable").body()).put("attentionNeeded",true).put("attentionReason","model_unavailable");
+                response=planning?new JSONObject().put("decision","reply").put("reason","reply_needed").put("body",PlanDeferralPolicy.fallback(deferrals,sent)).put("attentionNeeded",true).put("attentionReason","plans")
+                    :new JSONObject().put("decision","reply").put("reason","reply_needed").put("body",AutopilotPolicy.fallback("model_unavailable").body()).put("attentionNeeded",true).put("attentionReason","model_unavailable");
             }
             insufficientHistory="no_reply".equals(response.optString("decision"))&&"insufficient_history".equals(response.optString("reason"));
             // A no-reply decision mutates durable state too. Adopt it only through
             // the same access, recipient, manual, learning and configuration checks.
-            reply=insufficientHistory?AutopilotPolicy.fallback("uncertain"):AutopilotPolicy.response(response.opt("decision"),response.opt("reason"),response.opt("body"),response.opt("attentionNeeded"),response.opt("attentionReason"),null);
+            reply=insufficientHistory?AutopilotPolicy.fallback("uncertain"):planning?AutopilotPolicy.planDeferral(response.opt("decision"),response.opt("reason"),response.opt("body"),deferrals,sent):AutopilotPolicy.response(response.opt("decision"),response.opt("reason"),response.opt("body"),response.opt("attentionNeeded"),response.opt("attentionReason"),null);
         }
         if(background&&(!SleepSession.generationAllowed(c,base,sleepRevision)||!IncomingBurst.unchanged(c,thread,base,burstAddress,burstToken)))return;
         String text=reply.body();

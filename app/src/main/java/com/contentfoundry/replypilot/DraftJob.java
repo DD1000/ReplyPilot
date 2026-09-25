@@ -1,6 +1,7 @@
 package com.contentfoundry.replypilot;
 import android.app.job.*;
 import android.content.*;
+import android.os.Build;
 import android.os.PersistableBundle;
 import org.json.JSONObject;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,7 +22,7 @@ public class DraftJob extends JobService {
             if(Messages.latest(c,thread)!=base)return;
             int id=IncomingBurst.jobId(c,thread);long wait=IncomingBurst.remaining(c,thread,base,address);
             PersistableBundle extras=new PersistableBundle();extras.putLong("thread",thread);extras.putLong("base",base);extras.putLong("burst",burst);
-            JobInfo job=new JobInfo.Builder(id,new ComponentName(c,DraftJob.class)).setExtras(extras).setMinimumLatency(wait).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).build();
+            JobInfo job=urgent(new JobInfo.Builder(id,new ComponentName(c,DraftJob.class)).setExtras(extras).setMinimumLatency(wait).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY));
             JobScheduler scheduler=c.getSystemService(JobScheduler.class);
             IncomingBurst.scheduleIfCurrent(c,thread,base,address,burst,()->{
                 // Remove a legacy modulo-based job only for this exact thread.
@@ -33,7 +34,7 @@ public class DraftJob extends JobService {
     private static void scheduleDeferred(Context c,long thread,long base,long wait){
         try{synchronized(PilotApp.SEND_LOCK){String address=Messages.address(c,thread,base);if(!IncomingBurst.current(c,thread,base,address)||MediaContext.newerIncoming(c,thread,base)||ManualTakeover.blocked(c,thread))return;
             long burst=IncomingBurst.token(c,thread,base,address);PersistableBundle extras=new PersistableBundle();extras.putLong("thread",thread);extras.putLong("base",base);extras.putLong("burst",burst);
-            JobInfo job=new JobInfo.Builder(IncomingBurst.jobId(c,thread),new ComponentName(c,DraftJob.class)).setExtras(extras).setMinimumLatency(wait).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).build();
+            JobInfo job=urgent(new JobInfo.Builder(IncomingBurst.jobId(c,thread),new ComponentName(c,DraftJob.class)).setExtras(extras).setMinimumLatency(wait).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY));
             IncomingBurst.scheduleIfCurrent(c,thread,base,address,burst,()->c.getSystemService(JobScheduler.class).schedule(job));
         }}catch(Exception unavailable){/* Keep the current-message binding; never discover old messages. */}
     }
@@ -43,9 +44,14 @@ public class DraftJob extends JobService {
             if(ManualTakeover.blocked(c,thread)||!AutopilotMms.enabled(c,Store.get(c).relationship(thread)))return;
             AutopilotMms.capture(c,thread,source,receipt,0);
             PersistableBundle extras=new PersistableBundle();extras.putLong("thread",thread);extras.putLong("sourceMms",source);extras.putLong("receipt",receipt);
-            JobInfo job=new JobInfo.Builder(IncomingBurst.jobId(c,thread),new ComponentName(c,DraftJob.class)).setExtras(extras).setMinimumLatency(Math.max(1000,wait)).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).build();
+            JobInfo job=urgent(new JobInfo.Builder(IncomingBurst.jobId(c,thread),new ComponentName(c,DraftJob.class)).setExtras(extras).setMinimumLatency(Math.max(1000,wait)).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY));
             c.getSystemService(JobScheduler.class).schedule(job);
         }}catch(Exception changed){/* A newer SMS/MMS keeps its own queued job. */}
+    }
+    /** Replies are what the owner is waiting on: run them ahead of this app's other background work. */
+    private static JobInfo urgent(JobInfo.Builder builder){
+        if(Build.VERSION.SDK_INT>=Build.VERSION_CODES.TIRAMISU)builder.setPriority(JobInfo.PRIORITY_HIGH);
+        return builder.build();
     }
     static void cancelPending(Context c){
         JobScheduler scheduler=c.getSystemService(JobScheduler.class);

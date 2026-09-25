@@ -298,6 +298,16 @@ public class MainActivity extends Activity {
         if(contactsObserverRegistered){getContentResolver().unregisterContentObserver(contactsObserver);contactsObserverRegistered=false;}
         messageUi.removeCallbacks(messageRefresh);messageRefreshPending=false;
     }
+    /** True when Android lets Reply Pilot's reply jobs and network run while the phone is dozing. */
+    private boolean batteryUnrestricted(){PowerManager power=getSystemService(PowerManager.class);return power!=null&&power.isIgnoringBatteryOptimizations(getPackageName());}
+    /** Android's own one-time prompt; some phones hide it, so fall back to the battery list, then app info. */
+    private void openBatterySettings(){
+        if(batteryUnrestricted())return;
+        for(Intent intent:new Intent[]{new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,Uri.parse("package:"+getPackageName())),new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+getPackageName()))}){
+            try{startActivity(intent);return;}catch(ActivityNotFoundException unavailable){/* Try the next screen. */}
+        }
+        throw new IllegalStateException("Open Android Settings → Apps → Reply Pilot → Battery and choose Unrestricted.");
+    }
     @Override protected void onResume(){super.onResume();ConversationHistoryCache.invalidate();LaunchHistoryCache.changed();HistoryArchive.changed();PilotApp.foreground=true;HistoryArchive.refresh(getApplicationContext());PilotApp.recoverMms(this);observeMessages();LocationSharing.EXECUTOR.execute(()->LocationSharing.reconcile(getApplicationContext()));RecentContext.prepareEnabled(this);if(web!=null){web.onResume();notifyMessageAccess();if(ready)web.evaluateJavascript("window.onNativeResume?.()",null);}reconcileRoleRequest(true);if(contactsRequestReturned)finishContactsRequest();if(locationRequestReturned)finishLocationRequest();if(chatLogReturned)finishChatLogRequest();if(attachmentReturned)finishAttachmentRequest();}
     @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] results){
         super.onRequestPermissionsResult(requestCode,permissions,results);
@@ -600,7 +610,7 @@ public class MainActivity extends Activity {
         Sender.reconcile(this);Notices.refreshScheduled(this);
         JSONArray sims=Messages.sims(this);int sub=SimPolicy.effective(settings.getInt("sub",SimPolicy.NONE),Messages.simIds(sims));
         JSONArray inbox=ContactPhotos.annotate(this,annotateMms(Messages.inbox(this)),"address");
-        JSONObject result=new JSONObject().put("defaultSms",Messages.role(this)).put("permissions",Messages.allowed(this,Manifest.permission.READ_SMS)&&Messages.allowed(this,Manifest.permission.SEND_SMS)).put("contactsAllowed",Messages.allowed(this,Manifest.permission.READ_CONTACTS)).put("notifications",Notices.canAlert(this)).put("exact",Sender.exact(this)).put("sims",sims).put("sub",sub).put("phoneAccess",Messages.phoneAccess(this)).put("autoDraft",settings.getBoolean("autoDraft",true)).put("inAppSuggestions",settings.getBoolean("inAppSuggestions",true)).put("linkPreviews",settings.getBoolean("linkPreviews",true)).put("sleep",SleepSession.publicState(this)).put("location",LocationSharing.state(this)).put("matchMyStyle",settings.getBoolean("matchMyStyle",true)).put("tone",settings.getString("tone","Natural")).put("delay",settings.getInt("delay",300)).put("delayMode",settings.getString("delayMode","fixed")).put("delayMin",settings.getLong("delayMin",DelayPolicy.DEFAULT_MIN)).put("delayMax",settings.getLong("delayMax",DelayPolicy.DEFAULT_MAX)).put("theme",theme(settings.getString("theme","midnight"))).put("lockScreenPreviews",settings.getBoolean("lockScreenPreviews",true)).put("cloud",CloudConfig.publicState(this)).put("inbox",inbox).put("inboxComplete",true).put("contactPhotoRevision",ContactPhotos.revision()).put("jobs",Store.get(this).jobs());
+        JSONObject result=new JSONObject().put("defaultSms",Messages.role(this)).put("permissions",Messages.allowed(this,Manifest.permission.READ_SMS)&&Messages.allowed(this,Manifest.permission.SEND_SMS)).put("contactsAllowed",Messages.allowed(this,Manifest.permission.READ_CONTACTS)).put("notifications",Notices.canAlert(this)).put("exact",Sender.exact(this)).put("batteryUnrestricted",batteryUnrestricted()).put("sims",sims).put("sub",sub).put("phoneAccess",Messages.phoneAccess(this)).put("autoDraft",settings.getBoolean("autoDraft",true)).put("inAppSuggestions",settings.getBoolean("inAppSuggestions",true)).put("linkPreviews",settings.getBoolean("linkPreviews",true)).put("sleep",SleepSession.publicState(this)).put("location",LocationSharing.state(this)).put("matchMyStyle",settings.getBoolean("matchMyStyle",true)).put("tone",settings.getString("tone","Natural")).put("delay",settings.getInt("delay",300)).put("delayMode",settings.getString("delayMode","fixed")).put("delayMin",settings.getLong("delayMin",DelayPolicy.DEFAULT_MIN)).put("delayMax",settings.getLong("delayMax",DelayPolicy.DEFAULT_MAX)).put("theme",theme(settings.getString("theme","midnight"))).put("lockScreenPreviews",settings.getBoolean("lockScreenPreviews",true)).put("cloud",CloudConfig.publicState(this)).put("inbox",inbox).put("inboxComplete",true).put("contactPhotoRevision",ContactPhotos.revision()).put("jobs",Store.get(this).jobs());
         LaunchInboxCache.save(getApplicationContext(),inbox);LaunchHistoryCache.refresh(getApplicationContext(),inbox);HistoryArchive.refresh(getApplicationContext());return result.put("historyCache",HistoryArchive.status(getApplicationContext()));
     }
     private void requireLinkAccess(){
@@ -700,7 +710,7 @@ public class MainActivity extends Activity {
             final long requestLiveHistoryEpoch=liveHistoryEpoch.get();
             if(Arrays.asList("setHome","clearHome","saveLocation").contains(action)){homeRequestEpoch.incrementAndGet();LocationSharing.cancelHomeCandidates();}
             final long requestHomeEpoch=homeRequestEpoch.get();
-            if(Arrays.asList("shareState","cancelShare","role","smsRoleStatus","defaultSettings","appSettings","notificationSettings","permissions","requestContacts","requestLocation","locationSettings","importChatLog","pickAttachments","openAttachment","openLink","cancelHomeCandidates","alarms","approve","dismissSelection","focusEditor","close").contains(action)){
+            if(Arrays.asList("shareState","cancelShare","role","smsRoleStatus","defaultSettings","appSettings","notificationSettings","permissions","requestContacts","requestLocation","locationSettings","importChatLog","pickAttachments","openAttachment","openLink","cancelHomeCandidates","alarms","battery","approve","dismissSelection","focusEditor","close").contains(action)){
                 runOnUiThread(()->{try{
                     switch(action){
                         case "dismissSelection" -> {dismissTextSelection(true);finish(id,new JSONObject(),null);}
@@ -732,6 +742,7 @@ public class MainActivity extends Activity {
                         }
                         case "permissions" -> {permissions();finish(id,new JSONObject(),null);}
                         case "alarms" -> {startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,Uri.parse("package:"+getPackageName())));finish(id,new JSONObject(),null);}
+                        case "battery" -> {openBatterySettings();finish(id,new JSONObject(),null);}
                         case "close" -> {finish(id,new JSONObject(),null);MainActivity.this.finish();}
                         case "approve" -> {
                             String address=p.getString("address"),body=p.getString("body");

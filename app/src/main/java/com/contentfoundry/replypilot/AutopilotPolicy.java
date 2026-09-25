@@ -38,5 +38,10 @@ final class AutopilotPolicy {
         if(!(attentionReason instanceof String why)||!why.isEmpty())return fallback("uncertain");
         return new Reply(text.strip(),false,"");
     }
+    /** A plan push Autopilot may still answer: the model's own deferral when it is safe and new, otherwise a varied fallback. Always flagged. */
+    static Reply planDeferral(Object decision,Object reason,Object body,int prior,List<String> earlier){
+        boolean usable="reply".equals(decision)&&"reply_needed".equals(reason)&&body instanceof String text&&PlanDeferralPolicy.acceptable(text,earlier);
+        return new Reply(usable?((String)body).strip():PlanDeferralPolicy.fallback(prior,earlier),true,"plans");
+    }
     static boolean acceptedState(String state,boolean hasCarrierRecord){return hasCarrierRecord&&Set.of("sending","sent").contains(state);}
 }

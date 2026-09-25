@@ -459,6 +459,8 @@ textarea { touch-action:manipulation; }
 .sim-help{padding:2px 0 14px}
 .sim-help p{font-size:11px;margin:8px 0 0}
 .sim-help .connection-actions{margin-top:10px}
+.battery-note{margin:12px 0 4px;padding:12px 14px;border-radius:16px;background:var(--soft);border:1px solid var(--line)}
+.battery-note p{font-size:12px;margin:0 0 10px}
 .persona-panel{margin:4px 0 14px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--soft);font-size:12px;line-height:1.5}
 .persona-panel h4{margin:0 0 6px;font-size:13px;color:var(--ink)}
 .persona-panel p{margin:6px 0;color:var(--muted)}
