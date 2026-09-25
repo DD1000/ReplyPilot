@@ -36,9 +36,9 @@ final class AutopilotPolicy {
         if(!(attentionNeeded instanceof Boolean attention))return fallback("uncertain");
         if(attention){
             // Keep the model's own words when they are safe; a canned line reads like a bot.
-            // Private-information questions always get the fixed deferral, so nothing private leaks.
+            // A reply that looks like it carries a private detail gets the fixed deferral instead.
             String why=attentionReason instanceof String value?value:"uncertain";
-            if(Set.of("plans","sensitive","uncertain").contains(why)&&PlanDeferralPolicy.acceptable(text,List.of()))return new Reply(text.strip(),true,why);
+            if(!"model_unavailable".equals(why)&&PlanDeferralPolicy.acceptable(text,List.of())&&!privateDetail(text))return new Reply(text.strip(),true,reason(why));
             return fallback(why);
         }
         if(!(attentionReason instanceof String why)||!why.isEmpty())return fallback("uncertain");
@@ -49,5 +49,8 @@ final class AutopilotPolicy {
         boolean usable="reply".equals(decision)&&"reply_needed".equals(reason)&&body instanceof String text&&PlanDeferralPolicy.acceptable(text,earlier);
         return new Reply(usable?((String)body).strip():PlanDeferralPolicy.fallback(prior,earlier),true,"plans");
     }
+    private static final java.util.regex.Pattern PRIVATE=java.util.regex.Pattern.compile("\\p{Nd}{3,}|\\b\\p{Nd}+\\s+\\p{L}+(?:\\s+\\p{L}+)?\\s+(?:st|street|ave|avenue|rd|road|blvd|dr|drive|ln|lane|ct|court|way|pl|place)\\b|@\\S+\\.|https?://|www\\.|\\b(?:password|passcode|pin|code|ssn|social security|account|card|routing|address|zip)\\b",java.util.regex.Pattern.CASE_INSENSITIVE|java.util.regex.Pattern.UNICODE_CASE);
+    /** Numbers, links, emails and credential words: signs a flagged reply might carry something private. */
+    static boolean privateDetail(String text){return text!=null&&PRIVATE.matcher(text).find();}
     static boolean acceptedState(String state,boolean hasCarrierRecord){return hasCarrierRecord&&Set.of("sending","sent").contains(state);}
 }

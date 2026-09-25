@@ -34,8 +34,7 @@ sleep 45
 for i in $(seq 1 30); do
   if curl -fsS --max-time 10 "$STATUS_URL" >/dev/null 2>&1; then echo "The server is up."; break; fi; sleep 10
 done
-echo "The server is updated. Next, double-click Build Reply Pilot.command to build the app."
+echo "The server is updated."
 echo "SERVER UPDATE: SUCCESS"
 } 2>&1 | tee "$LOG"
-echo
-echo "Done. You can close this window."
+[ -n "$REPLY_PILOT_AUTO" ] || { echo; echo "Done. You can close this window."; }

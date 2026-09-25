@@ -31,5 +31,4 @@ git push origin "$BRANCH" || fail "GitHub didn't accept the push."
 git branch -q --set-upstream-to="origin/$BRANCH" "$BRANCH" 2>/dev/null
 echo "PUSH RESULT: SUCCESS"
 } 2>&1 | tee "$LOG"
-echo
-echo "Done. You can close this window."
+[ -n "$REPLY_PILOT_AUTO" ] || { echo; echo "Done. You can close this window."; }

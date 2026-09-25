@@ -21,3 +21,4 @@ build-log.txt
 _to_delete/
 server-update-log.txt
 push-log.txt
+auto-update-log.txt

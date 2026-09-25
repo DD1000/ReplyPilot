@@ -61,5 +61,4 @@ echo "Saved dist/Reply-Pilot-$VERSION.apk"
 if command -v python3 >/dev/null 2>&1; then python3 tools/check-apk-signer.py "dist/Reply-Pilot-$VERSION.apk" "$SIGNER" || fail "The APK is not signed with your phone's key."; fi
 echo "BUILD RESULT: SUCCESS"
 } 2>&1 | tee "$LOG"
-echo
-echo "Done. You can close this window."
+[ -n "$REPLY_PILOT_AUTO" ] || { echo; echo "Done. You can close this window."; }

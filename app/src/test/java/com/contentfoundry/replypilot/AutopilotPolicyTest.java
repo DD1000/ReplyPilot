@@ -16,6 +16,10 @@ public class AutopilotPolicyTest {
             assertEquals("lol that's a big one, lemme think on it",reply.body());assertTrue(reply.attentionNeeded());assertEquals(why,reply.attentionReason());
         }
         assertEquals(AutopilotPolicy.fallback("model_unavailable").body(),AutopilotPolicy.response("reply","reply_needed","hey",true,"model_unavailable",null).body());
+        AutopilotPolicy.Reply personal=AutopilotPolicy.response("reply","reply_needed","haha good q, for pretty much everything tbh",true,"personal_info",null);
+        assertEquals("haha good q, for pretty much everything tbh",personal.body());assertEquals("personal_info",personal.attentionReason());
+        for(String leak:List.of("my code is 4821","it's 12 Oak St","email me at a@b.com","the password is fake","check https://x.co"))
+            assertEquals(leak,AutopilotPolicy.fallback("personal_info").body(),AutopilotPolicy.response("reply","reply_needed",leak,true,"personal_info",null).body());
         assertEquals(AutopilotPolicy.fallback("uncertain").body(),AutopilotPolicy.response("reply","reply_needed","i'm at home rn",true,"uncertain",null).body());
         assertEquals(AutopilotPolicy.fallback("plans").body(),AutopilotPolicy.response("reply","reply_needed","I'm free tonight",true,"plans",null).body());
         AutopilotPolicy.Reply opinion=AutopilotPolicy.response("reply","reply_needed","honestly i'm all in on AI lol",false,"",null);

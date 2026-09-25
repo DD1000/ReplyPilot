@@ -9,9 +9,11 @@ Training is per chat and only starts when you tap **Train Autopilot** in that ch
 ## New in 0.12.2
 
 - **Autopilot answers opinion questions instead of dodging them.** Questions like “what do you think AI will do to the economy?” used to be treated as chatbot work: Autopilot held back and the phone swapped in “Got your message. Let me get back to you.” Now opinion and big-picture questions get a short, casual take in your texting style, with no alert. Real work requests (write code, an essay, homework) still get a casual brush-off in your voice and an alert.
+- **Questions about you get answered too.** “How would you use it?” used to get “Let me get back to you on that.” Now Autopilot answers from your views, your trained persona and what you've said before. When none of those cover it, it gives a short general answer without made-up details and alerts you so you can add more. Only truly private things (where you are, your address, schedule, money, health, codes or accounts) still get a deferral.
 - **Settings → Your views.** Type what you think about things people might ask you (up to 1,200 characters). When someone asks your opinion, Autopilot uses these views and never contradicts them. Without them it keeps opinions light and stays neutral on divisive political or religious questions.
-- **Fewer canned lines.** When Autopilot flags a chat for you, it keeps its own reply in your voice when that reply is safe. The fixed texts are used only if the AI is unreachable, its reply isn't safe, or someone asks for private information.
-- Requires the 0.12.2 server update (`Update Server.command`). Install over 0.12.1 without clearing storage. No new permission.
+- **Fewer canned lines.** When Autopilot flags a chat for you, it keeps its own reply in your voice when that reply is safe. The fixed texts are used only if the AI is unreachable or its reply isn't safe (a commitment, a claimed location, or anything that looks like a number, link, email, address or code).
+- **Auto Updater.command.** Start it once and leave its window open: whenever Claude saves an update, the Mac updates the server (only if the server changed), builds the app (only if the app changed) and pushes to GitHub by itself, then shows a notification when the new APK is ready. It never deletes anything and stops at the first problem.
+- Requires the 0.12.2 server update. Install over 0.12.1 without clearing storage. No new permission.
 
 ## Previous release: 0.12.1
 

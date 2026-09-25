@@ -18,7 +18,7 @@ test('an opinion question reaches the model with the owner views and comes back 
  assert.equal(JSON.parse(sent.input).ownerViews,views);
 });
 test('Autopilot instructions treat opinions as conversation and forbid canned lines',()=>{
- for(const phrase of ['Opinion and big-picture questions','ownerViews','never contradict it','friendly non-answer','attentionNeeded false','never do the work','Got your message. Let me get back to you.'])assert.ok(autopilotInstructions.includes(phrase),phrase);
+ for(const phrase of ['Questions about the owner themselves','Use personal_info only for private or checkable facts','Opinion and big-picture questions','ownerViews','never contradict it','friendly non-answer','attentionNeeded false','never do the work','Got your message. Let me get back to you.'])assert.ok(autopilotInstructions.includes(phrase),phrase);
  for(const phrase of ['unsupported expertise','use a brief deferral and attention','such as "Let me get back to you on that."'])assert.ok(!autopilotInstructions.includes(phrase),phrase);
 });
 test('ownerViews is bounded text and only goes to Autopilot',async()=>{

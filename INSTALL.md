@@ -1,5 +1,7 @@
 # Install Reply Pilot 0.12.2
 
+**Automatic:** double-click **Auto Updater.command** once and leave its window open (minimizing is fine). It does steps 1 to 2 below and the GitHub push by itself whenever Claude saves an update, then shows a notification when the APK is ready. You only install the APK on the phone (step 3). The manual steps below still work.
+
 ## 1. Update the server
 
 Double-click **Update Server.command** in the project folder. It runs the server tests, then uploads `relay/` to your Reply Pilot project on Railway using your Mac's Railway sign-in (it offers to sign in or install Railway's tool if needed). Your OpenAI key and phone token stay in Railway; no new variables are needed. The log is saved as `server-update-log.txt`. Older 0.11.x and 0.12.x phones keep working with the updated server.
@@ -14,7 +16,8 @@ Quick Share **Reply-Pilot-0.12.2.apk** from `dist/`, open it in Files by Google,
 
 ## New in 0.12.2
 
-- Opinion questions get a short casual take in your voice instead of “Got your message. Let me get back to you.”
+- Opinion questions and questions about you (“How would you use it?”) get a short answer in your voice instead of a canned line.
+- **Auto Updater.command** runs the server update, app build and GitHub push for you.
 - **Settings → Your views:** what you think about things; Autopilot uses it when someone asks your opinion.
 - Flagged replies keep Autopilot's own wording when it's safe, instead of a canned line.
 
