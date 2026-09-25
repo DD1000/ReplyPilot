@@ -248,9 +248,22 @@ public final class Messages {
     public static long thread(Context c,String address){return Telephony.Threads.getOrCreateThreadId(c,address);}
     public static JSONArray sims(Context c) {
         JSONArray out=new JSONArray();if(!allowed(c,Manifest.permission.READ_PHONE_STATE))return out;
+        SubscriptionManager manager=c.getSystemService(SubscriptionManager.class);if(manager==null)return out;
         List<SubscriptionInfo> list;
-        try{list=c.getSystemService(SubscriptionManager.class).getActiveSubscriptionInfoList();}catch(SecurityException revoked){return out;}
-        if(list!=null)for(SubscriptionInfo s:list)try{out.put(new JSONObject().put("id",s.getSubscriptionId()).put("name",s.getDisplayName().toString()));}catch(JSONException ignored){}return out;
+        try{list=manager.getActiveSubscriptionInfoList();}catch(SecurityException revoked){return out;}
+        if(list==null||list.isEmpty()){
+            // Some phones briefly omit the list (for example after a SIM or eSIM change) while
+            // still confirming the active default texting SIM through a direct lookup.
+            try{int fallback=SubscriptionManager.getDefaultSmsSubscriptionId();SubscriptionInfo info=fallback>=0?manager.getActiveSubscriptionInfo(fallback):null;if(info!=null)list=List.of(info);}
+            catch(SecurityException|IllegalArgumentException ignored){}
+        }
+        if(list!=null)for(SubscriptionInfo s:list)try{if(s!=null&&s.getSubscriptionId()>=0)out.put(new JSONObject().put("id",s.getSubscriptionId()).put("name",simName(s)));}catch(JSONException ignored){}return out;
+    }
+    /** Android may leave a SIM unnamed; never let a missing label hide the SIM. */
+    private static String simName(SubscriptionInfo s){
+        CharSequence display=s.getDisplayName();if(display!=null&&!display.toString().trim().isEmpty())return display.toString();
+        CharSequence carrier=s.getCarrierName();if(carrier!=null&&!carrier.toString().trim().isEmpty())return carrier.toString();
+        return s.getSimSlotIndex()>=0?"SIM "+(s.getSimSlotIndex()+1):"SIM";
     }
     public static boolean activeSim(Context c,int sub){JSONArray a=sims(c);for(int i=0;i<a.length();i++)if(a.optJSONObject(i).optInt("id")==sub)return true;return false;}
     /** Android shares the SIM list only with Phone (READ_PHONE_STATE) access. */

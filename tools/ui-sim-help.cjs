@@ -20,6 +20,7 @@ const assert=require('node:assert/strict');
      if(action==='snapshot')result=fixture;
      else if(action==='smsRoleStatus')result={defaultSms:true,permissions:true,phoneAccess:fixture.phoneAccess,pending:false,phase:'idle',outcome:'',message:''};
      else if(action==='permissions'&&grantPhone){fixture.phoneAccess=true;fixture.sims=[{id:7,name:'Fictional SIM'}];fixture.sub=7;}
+     else if(action==='settings'&&Number.isInteger(p.sub))fixture.sub=p.sub;
      else if(action==='media')result=[];
      nativeResult(id,copy(result),null);
     },0);
@@ -44,6 +45,16 @@ const assert=require('node:assert/strict');
   assert.equal(await page.locator('#sim').inputValue(),'7');
   assert.equal(await page.locator('#sim option').count(),2);
 
+  // 2b. Picking a SIM saves it at once; sends read the saved SIM, not the unsaved form.
+  await page.evaluate(()=>{fixture.sims=[{id:7,name:'Fictional SIM'},{id:8,name:'Second fictional SIM'}];fixture.sub=-1;});
+  await page.evaluate(()=>window.onNativeResume?.());
+  await page.waitForFunction(()=>document.querySelectorAll('#sim option').length===3);
+  await page.locator('#sim').selectOption('8');
+  await page.waitForFunction(()=>calls.some(call=>call.action==='settings'&&call.p.sub===8));
+  await page.waitForFunction(()=>document.querySelector('#toast')?.textContent.includes('Sending SIM saved'));
+  assert.equal(await page.evaluate(()=>fixture.sub),8);
+  assert.equal(await page.locator('#sim').inputValue(),'8');
+
   // 3. Phone access but no active SIM: point to Android's SIM settings instead.
   await page.evaluate(()=>{fixture.sims=[];fixture.sub=-1;});
   await page.evaluate(()=>window.onNativeResume?.());
@@ -58,6 +69,6 @@ const assert=require('node:assert/strict');
   await page.waitForFunction(()=>calls.some(call=>call.action==='appSettings'));
 
   assert.deepEqual(errors,[]);
-  console.log('PASS: empty SIM menu explains Phone access or inactive SIM, Allow Phone access recovers and selects the only SIM, app permissions route.');
+  console.log('PASS: empty SIM menu explains Phone access or inactive SIM, Allow Phone access recovers and selects the only SIM, SIM choice saves immediately, app permissions route.');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exit(1);});
