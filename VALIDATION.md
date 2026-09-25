@@ -1,4 +1,12 @@
-# Validation record — 0.11.0
+# Validation record — 0.11.1
+
+## 0.11.1 Sending SIM recovery — 2026-09-25
+
+- Built on the owner's Mac with `Build Reply Pilot.command` (Java 21, Android SDK 36, Gradle 8.13): `testReleaseUnitTest` and `assembleRelease` passed, **640 unit tests** with zero failures, errors or skips, including 5 new `SimPolicyTest` cases (keep the active saved SIM, recover to the only active SIM, never guess among several SIMs, no-SIM handling, owner-facing messages). `lintVitalRelease` passed during assembly.
+- APK `dist/Reply-Pilot-0.11.1.apk` (version code 65), SHA-256 `a5e6e075aff34237d2c82d5de1ed88219d5cf66a859b1060ffa035cb50bb6a40`. `tools/check-apk-signer.py` confirms v2 signer `667cf8c2758f1a7674674c2308385b30e629260c6dd9f5d883b5b03f59ea8bdb`, unchanged from 0.6.x through 0.11.0, so it installs as an update. No permission changes.
+- Browser: new `tools/ui-sim-help.cjs` passes with fictional bridge data. It covers an empty menu without Phone access (explanation, Allow Phone access, Open app permissions), recovery selecting the only SIM, immediate save of a SIM choice, and the "No active SIM found" state. `ui-manual-takeover`, `ui-autopilot-simple` and `ui-inbox-touch` still pass. `ui-send`, `ui-send-recovery`, `ui-setup`, `ui-smoke`, `ui-security`, `ui-safety`, `ui-text-mms` and `ui-attachments` fail identically on unmodified 0.11.0 in the headless Chromium used here (touch-hold timing and fixture timeouts), so those failures are environmental and not caused by this change.
+- Physical Pixel checks remain: install over 0.11.0, confirm Settings → Sending SIM lists the SIM, and send a manual text. If the menu says "No active SIM found" while Phone access is allowed, Android itself isn't reporting an active subscription.
+
 
 ## 0.11.0 Autopilot simplification and initial history analysis — 2026-09-25
 
