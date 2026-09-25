@@ -11,8 +11,7 @@ final class ReplyEligibility {
     static final int MINIMUM_TOTAL=20,MINIMUM_OWNER=5,MINIMUM_INCOMING=5;
     record Result(boolean eligible,int total,int owner,int incoming,boolean countsAreMinimum,boolean scanComplete){
         Result(boolean eligible,int total,int owner,int incoming){this(eligible,total,owner,incoming,false,true);}
-        String message(){return eligible?"Enough conversation history for automatic replies."
-            :"Automatic replies need 20 distinct messages, including at least 5 from you and 5 from this person. Add a labeled chat log or keep chatting.";}
+        String message(){return eligible?"Autopilot is trained for this chat.":"Train Autopilot for this chat before turning it on.";}
     }
     static Result evaluate(List<ChatLog.Turn> turns){
         Counter counter=new Counter(Integer.MAX_VALUE);for(ChatLog.Turn turn:turns)counter.add(turn);return counter.result(true);

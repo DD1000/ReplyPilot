@@ -22,7 +22,8 @@ public final class CloudDrafts {
     private static void generate(Context c,long thread,long base,String tone,boolean background,String jokeToken,boolean inApp) throws Exception {
         boolean joke=jokeToken!=null;
         if(joke)throw new IllegalStateException("This reply action was retired. Open the conversation.");
-        HistoryLearning.requireReady(c);String learningToken=HistoryLearning.token(c);
+        // Automatic and in-app work needs this chat's trained persona; an explicit draft request does not.
+        if((background||inApp)&&!Personas.ready(c,thread))return;String learningToken=Personas.token(c,thread);
         Store store=Store.get(c);JSONObject profile;JSONObject before;JSONObject config;long generationRevision,manualRevision,sleepRevision,burstToken=0;String burstAddress;LocationReplies.Snapshot location;
         synchronized(PilotApp.SEND_LOCK){
             if(inApp&&!ForegroundSuggestions.eligible(c,thread,base))return;
@@ -58,12 +59,12 @@ public final class CloudDrafts {
         else{
             List<ReplyPrompt.Message> context=matchStyle?RecentContext.refresh(c,thread).messages():ReplyAgent.promptHistory(Messages.history(c,thread));
             JSONObject request=payload(thread,context,ContactGuidance.context(profile.optString("body"),profile.optString("importantDetails"),"always_reply"),profile.optString("samples"),"Use AI intuition",matchStyle)
-                .put("automatic",background).put("autopilot",true).put("automationReady",ReplyReadiness.current(c,thread,profile.optString("samples")).eligible())
-                .put("engagement","always_reply").put("styleMode","learned").put("historyMemory",HistoryLearning.context(c,thread));
+                .put("automatic",background).put("autopilot",true).put("automationReady",Personas.ready(c,thread))
+                .put("engagement","always_reply").put("styleMode","learned").put("persona",Personas.forReply(c,thread));
             if(matchStyle)request.put("approvedExamples",ApprovedLearning.examples(c,thread));
             if(location.payload()!=null)request.put("locationContext",location.payload());
             if(background&&(!SleepSession.generationAllowed(c,base,sleepRevision)||!IncomingBurst.unchanged(c,thread,base,burstAddress,burstToken)))return;
-            if(!ManualTakeover.unchanged(c,thread,manualRevision)||ManualTakeover.blocked(c,thread)||!HistoryLearning.unchanged(c,learningToken))return;
+            if(!ManualTakeover.unchanged(c,thread,manualRevision)||ManualTakeover.blocked(c,thread)||!Personas.unchanged(c,thread,learningToken))return;
             AutomaticReplies.requireSettledMms();
             JSONObject response;
             try{response=CloudClient.request(config,"/draft",request);}
@@ -80,7 +81,7 @@ public final class CloudDrafts {
         String text=reply.body();
         if(reply.attentionNeeded())location=new LocationReplies.Snapshot(null,0,0);
         synchronized(PilotApp.SEND_LOCK){
-            if(!ManualTakeover.unchanged(c,thread,manualRevision)||ManualTakeover.blocked(c,thread)||!HistoryLearning.unchanged(c,learningToken))return;
+            if(!ManualTakeover.unchanged(c,thread,manualRevision)||ManualTakeover.blocked(c,thread)||!Personas.unchanged(c,thread,learningToken))return;
             if(inApp&&!ForegroundSuggestions.enabled(c))return;
             if(MediaContext.newerIncoming(c,thread,base)){
                 if(background){AutomaticReplies.record(c,thread,base,"needs_review");return;}

@@ -66,7 +66,7 @@ public class DraftJob extends JobService {
                 if(sourceMms>0){
                     if(!active.get())return;
                     if(MmsDownloads.isPending()||IncomingBurst.hasUnbound(this)){reschedule=true;return;}
-                    if(!HistoryLearning.ready(this)){reschedule=true;return;}
+                    if(!Personas.ready(this,thread))return;
                     AutopilotMms.generate(this,thread,sourceMms,receipt);return;
                 }
                 address=Messages.address(this,thread,base);
@@ -78,7 +78,7 @@ public class DraftJob extends JobService {
                 if(!PersonProfile.automaticAllowed(profile.optBoolean("cloudEnabled"),profile.optBoolean("autoDraft"),getSharedPreferences("settings",0).getBoolean("autoDraft",true))||!Messages.role(this)||Messages.latest(this,thread)!=base)return;
                 if(!active.get()||!IncomingBurst.unchanged(this,thread,base,address,burst))return;
                 if(MmsDownloads.isPending()){reschedule=true;return;}
-                if(!HistoryLearning.ready(this)){reschedule=true;return;}
+                if(!Personas.ready(this,thread))return;
                 CloudDrafts.generate(this,thread,base,getSharedPreferences("settings",0).getString("tone","Natural"),true);
             }catch(AutomaticReplies.WaitingForMms waiting){
                 // Retry only this already-received source, never scan old history.

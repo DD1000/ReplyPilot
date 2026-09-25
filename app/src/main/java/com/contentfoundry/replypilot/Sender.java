@@ -195,7 +195,7 @@ public final class Sender {
         }
     }
     static long scheduleAutomaticMms(Context c,AutopilotMms.Source source,AutopilotPolicy.Reply reply,long profileRevision,String configRevision)throws Exception{synchronized(PilotApp.SEND_LOCK){
-        HistoryLearning.requireReady(c);Store db=Store.get(c);long thread=source.thread();JSONObject profile=db.relationship(thread),config=CloudConfig.read(c);
+        Store db=Store.get(c);long thread=source.thread();Personas.requireReady(c,thread);JSONObject profile=db.relationship(thread),config=CloudConfig.read(c);
         long delay=PersonProfile.autoDelay(profile.optLong("autoDelay"));
         String denied=SendPolicy.automaticBlock(profile.optBoolean("cloudEnabled"),profile.optBoolean("autoDraft"),profile.optBoolean("autoSend"),c.getSharedPreferences("settings",0).getBoolean("autoDraft",true),profileRevision,profile.optLong("revision"),configRevision,config==null?null:config.optString("revision"),Notices.canAlert(c),delay==0||exact(c),delay);
         if(denied!=null)throw new IllegalStateException(denied);
@@ -255,7 +255,7 @@ public final class Sender {
     }
     private static String automaticBoundaryBlock(Context c,JSONObject job){
         if(ManualTakeover.blocked(c,job.optLong("thread")))return ManualTakeoverPolicy.WAITING;
-        if(!HistoryLearning.ready(c))return "Pilot is learning your conversations. This reply was not sent.";
+        if(!Personas.ready(c,job.optLong("thread")))return "Autopilot isn't trained for this chat. This reply was not sent.";
         if(AutopilotMms.saved(c,job.optLong("_id"))!=null)return AutopilotMms.block(c,job);
         if(MmsAttachments.hasStaged(c,job.optLong("thread")))return "You are preparing an attachment. Automatic replies are paused for this conversation.";
         String location=LocationReplies.block(c,job,System.currentTimeMillis());if(location!=null)return location;

@@ -7,7 +7,7 @@ import java.util.*;
 /** Foreground, opt-in image interpretation. Does not create a draft, timer or send. */
 final class MediaAnalysis {
     static JSONObject analyze(Context c,long thread,long mediaId,boolean inApp)throws Exception{
-        HistoryLearning.requireReady(c);String learningToken=HistoryLearning.token(c);
+        if(inApp)Personas.requireReady(c,thread);String learningToken=Personas.token(c,thread);
         Store store=Store.get(c);JSONObject profile,config;long generation,manualRevision;
         synchronized(PilotApp.SEND_LOCK){
             ManualTakeover.require(c,thread);manualRevision=ManualTakeover.revision(c,thread);
@@ -49,7 +49,7 @@ final class MediaAnalysis {
             .put("engagement",profile.optString("engagement","natural")).put("humorLevel",0)
             .put("styleMode","learned").put("insideJokes","").put("mediaLimitations",notes);
         if(match)input.put("approvedExamples",ApprovedLearning.examples(c,thread));
-        input.put("historyMemory",HistoryLearning.context(c,thread)).put("autopilot",true).put("engagement","always_reply");
+        input.put("persona",Personas.forReply(c,thread)).put("autopilot",true).put("engagement","always_reply");
         if(inApp&&(MmsDownloads.isPending()||MmsAttachments.hasStaged(c,thread)||!ForegroundSuggestions.enabled(c)||!isCurrentMedia(c,thread,mediaId)))throw new IllegalStateException("A newer conversation is available. Open its latest message.");
         if(!ManualTakeover.unchanged(c,thread,manualRevision))throw new IllegalStateException(ManualTakeoverPolicy.WAITING);ManualTakeover.require(c,thread);
         JSONObject response=CloudClient.request(config,"/media-analysis",input);
@@ -62,7 +62,7 @@ final class MediaAnalysis {
             if(!PilotApp.foreground||(inApp&&!ForegroundSuggestions.enabled(c))||generation!=store.generationRevision()||latest.optLong("revision")!=profile.optLong("revision")||!latest.optBoolean("cloudEnabled")||latestConfig==null||!latestConfig.optString("revision").equals(config.optString("revision")))throw new IllegalStateException("Your AI settings changed. Analyze the media again.");
             String suggestion=result.suggestion(),reason=result.reason();
             if(incomplete&&"reply_needed".equals(reason)){suggestion="";reason="needs_review";}
-            if(!HistoryLearning.unchanged(c,learningToken))throw new IllegalStateException("Conversation learning changed. Analyze again.");
+            if(!Personas.unchanged(c,thread,learningToken))throw new IllegalStateException("Conversation learning changed. Analyze again.");
             String attentionReason="";
             if(!"reply_needed".equals(reason)&&!"insufficient_history".equals(reason)){
                 attentionReason="plans_need_input".equals(reason)?"plans":"uncertain";

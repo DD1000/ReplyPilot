@@ -1,12 +1,20 @@
-# Reply Pilot 0.11.1 — Android personal preview
+# Reply Pilot 0.12.0 — Android personal preview
 
-An Android SMS/MMS app with per-contact OpenAI Autopilot, Relationship Dynamic and Important Details. Tap the send arrow to send manually or hold it to choose Instant, 1 minute or 5 minutes. Autopilot replies to new incoming turns, defers decisions and plans, and alerts the owner when a chat needs attention. The APK contains no OpenAI key; the existing paired HTTPS service holds it.
+An Android SMS/MMS app with per-chat **Train Autopilot**. Tap the send arrow to send manually or hold it to choose Instant, 1 minute or 5 minutes. For each chat you choose, Autopilot learns how you text that person and replies in your voice; it defers decisions and plans and alerts you when a chat needs attention. The APK contains no OpenAI key; your paired HTTPS service holds it.
 
-Initial preparation analyzes all available SMS/MMS text through the service and OpenAI before conversation AI replies begin. Encrypted, resumable phone checkpoints produce bounded per-contact historical summaries. Later requests combine those summaries with recent context and approved writing. This is context, not model-weight training. Manual messaging remains available during preparation; inaccessible RCS history cannot be imported by this installation.
+Training is per chat and only starts when you tap **Train Autopilot** in that chat's Reply setup. The phone reads your most recent 1,000 SMS/MMS texts with that person, the service asks the training model (GPT-6 Astra by default) once, and the phone saves the resulting persona encrypted in private storage: how you text them, the relationship, ongoing context, things to avoid, and up to 30 of your real replies as examples. Each Autopilot reply sends that persona and the recent conversation to the reply model (GPT-6 Sol by default). Nothing about a chat goes to the service until you train it. This is contextual memory, not model training. RCS chats are not available to this app.
 
-**Status:** personal preview, version 0.11.1 (version code 65). The existing draft service is deployed to Railway, and the user previously reported successful phone pairing and test replies. See **VALIDATION.md** for completed checks by version. Carrier, background-send and physical Pixel media/codec tests remain outstanding. The browser preview uses synthetic data. ARM64 Android 12+; compile/target SDK 36. Pixel 11 compatibility requires testing on the actual phone.
+**Status:** personal preview, version 0.12.0 (version code 66). The existing draft service is deployed to Railway, and the user previously reported successful phone pairing and test replies. See **VALIDATION.md** for completed checks by version. Carrier, background-send and physical Pixel media/codec tests remain outstanding. The browser preview uses synthetic data. ARM64 Android 12+; compile/target SDK 36. Pixel 11 compatibility requires testing on the actual phone.
 
-## New in 0.11.1
+## New in 0.12.0
+
+- **Train Autopilot, one chat at a time.** Reply setup has a Train Autopilot panel. Tap it to build that person's persona from your most recent 1,000 texts together (usually under a minute). You can see what it learned, retrain anytime, or remove the training. After about 1,000 new texts the app suggests retraining; chats with under 100 texts show that the persona will be thin.
+- **Autopilot requires training.** Autopilot can only be turned on for a trained chat, and removing training stops it. Training never turns Autopilot on by itself. Explicit Draft reply and Understand & reply still work for untrained chats and are reviewed before sending.
+- **The whole-phone history pass is gone.** 0.11.0 sent every conversation to OpenAI before any AI reply worked and paused all AI until it finished. 0.12.0 deletes those old all-conversation summaries from the phone on first launch.
+- **Models:** training uses `OPENAI_TRAINING_MODEL` (default `gpt-6-astra`) and falls back to the reply model if your key can't use it; replies use `OPENAI_MODEL` (default `gpt-6-sol`).
+- Requires the 0.12.0 server update (`Update Server.command`). Install over 0.11.x without clearing storage. No new phone permission.
+
+## Previous release: 0.11.1
 
 - **Sending SIM fix.** When Android reports the phone's only SIM under a new ID (for example after a SIM, eSIM or carrier change), sending now uses that SIM instead of stopping with “Select an active SIM in Settings.” Phones with several SIMs still ask you to choose.
 - An empty **Settings → Sending SIM** menu now explains why: missing Phone access (with **Allow Phone access** and **Open app permissions** buttons) or no active SIM reported by Android. Send errors name the same fix.

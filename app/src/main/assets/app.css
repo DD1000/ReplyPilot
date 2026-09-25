@@ -459,3 +459,23 @@ textarea { touch-action:manipulation; }
 .sim-help{padding:2px 0 14px}
 .sim-help p{font-size:11px;margin:8px 0 0}
 .sim-help .connection-actions{margin-top:10px}
+.persona-panel{margin:4px 0 14px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--soft);font-size:12px;line-height:1.5}
+.persona-panel h4{margin:0 0 6px;font-size:13px;color:var(--ink)}
+.persona-panel p{margin:6px 0;color:var(--muted)}
+.persona-panel small{display:block;text-align:left;font-size:11px;color:var(--muted);margin-top:6px}
+.persona-status{display:flex;align-items:flex-start;gap:10px;margin:8px 0}
+.persona-status .spinner{flex-shrink:0;margin-top:3px}
+.persona-status strong{display:block;font-size:13px;color:var(--ink)}
+.persona-status small{margin-top:2px}
+.persona-check svg{width:20px;height:20px;color:var(--green);flex-shrink:0}
+.persona-note{padding:8px 10px;border-radius:12px;background:var(--bg)}
+.persona-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:10px}
+.persona-actions button{min-height:44px}
+.persona-details{margin-top:8px}
+.persona-details summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-weight:600;color:var(--ink)}
+.persona-details h5{margin:10px 0 2px;font-size:11px;color:var(--ink)}
+.persona-details p{margin:0 0 6px;white-space:pre-wrap;overflow-wrap:anywhere}
+.persona-examples{list-style:none;margin:4px 0 8px;padding:0;display:grid;gap:6px}
+.persona-examples li{padding:8px 10px;border-radius:12px;background:var(--bg);overflow-wrap:anywhere}
+.persona-examples span{display:block;color:var(--muted);font-size:11px;margin-bottom:2px;white-space:pre-wrap}
+.persona-examples strong{font-weight:500;color:var(--ink)}

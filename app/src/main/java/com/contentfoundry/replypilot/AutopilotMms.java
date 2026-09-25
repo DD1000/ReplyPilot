@@ -64,7 +64,7 @@ final class AutopilotMms {
     private static AutopilotSourcePolicy.Binding binding(Source s){return s==null?null:new AutopilotSourcePolicy.Binding(s.thread(),s.id(),s.date(),s.fingerprint(),s.address(),s.smsId(),s.smsSignature(),s.manualRevision());}
     static boolean same(Source a,Source b){return AutopilotSourcePolicy.matches(binding(a),binding(b));}
     static void generate(Context c,long thread,long id,long receipt)throws Exception{
-        HistoryLearning.requireReady(c);String learning=HistoryLearning.token(c);Store db=Store.get(c);JSONObject profile,config;Source source;long generation;
+        Personas.requireReady(c,thread);String learning=Personas.token(c,thread);Store db=Store.get(c);JSONObject profile,config;Source source;long generation;
         synchronized(PilotApp.SEND_LOCK){
             ManualTakeover.require(c,thread);profile=db.relationship(thread);if(!enabled(c,profile))return;
             config=CloudConfig.read(c);if(config==null)throw new IllegalStateException("Connect your AI service.");
@@ -79,8 +79,8 @@ final class AutopilotMms {
         if(reason!=null)reply=AutopilotPolicy.fallback(reason);
         else{
             JSONObject request=CloudDrafts.payload(thread,history.context().messages(),ContactGuidance.context(profile.optString("body"),profile.optString("importantDetails"),"always_reply"),profile.optString("samples"),"Use AI intuition",true)
-                .put("automatic",true).put("autopilot",true).put("automationReady",true).put("engagement","always_reply").put("historyMemory",HistoryLearning.context(c,thread)).put("approvedExamples",ApprovedLearning.examples(c,thread));
-            if(!HistoryLearning.unchanged(c,learning)||!same(source,capture(c,thread,id,receipt,0))||block(c,source,0)!=null)return;
+                .put("automatic",true).put("autopilot",true).put("automationReady",true).put("engagement","always_reply").put("persona",Personas.forReply(c,thread)).put("approvedExamples",ApprovedLearning.examples(c,thread));
+            if(!Personas.unchanged(c,thread,learning)||!same(source,capture(c,thread,id,receipt,0))||block(c,source,0)!=null)return;
             JSONObject response;
             try{response=CloudClient.request(config,"/draft",request);}
             catch(Exception unavailable){response=new JSONObject().put("decision","reply").put("reason","reply_needed").put("body",AutopilotPolicy.fallback("model_unavailable").body()).put("attentionNeeded",true).put("attentionReason","model_unavailable");}
@@ -89,7 +89,7 @@ final class AutopilotMms {
         if(!history.fingerprint().equals(TextMmsDrafts.history(c,thread,id,source.address()).fingerprint()))return;
         synchronized(PilotApp.SEND_LOCK){
             JSONObject current=db.relationship(thread),currentConfig=CloudConfig.read(c);
-            if(!HistoryLearning.unchanged(c,learning)||generation!=db.generationRevision()||current.optLong("revision")!=profile.optLong("revision")||!enabled(c,current)||currentConfig==null||!currentConfig.optString("revision").equals(config.optString("revision"))||!same(source,capture(c,thread,id,receipt,0))||block(c,source,0)!=null||db.draft(thread,source.smsId())!=null)return;
+            if(!Personas.unchanged(c,thread,learning)||generation!=db.generationRevision()||current.optLong("revision")!=profile.optLong("revision")||!enabled(c,current)||currentConfig==null||!currentConfig.optString("revision").equals(config.optString("revision"))||!same(source,capture(c,thread,id,receipt,0))||block(c,source,0)!=null||db.draft(thread,source.smsId())!=null)return;
             long job=Sender.scheduleAutomaticMms(c,source,reply,profile.optLong("revision"),config.optString("revision"));
             if(job==0)return;JSONObject saved=db.job(job);boolean instant=saved.optLong("auto_delay")==0;
             if(!Notices.draft(c,(int)thread,Messages.name(c,source.address()),source.text().isBlank()?"Attachment":source.text(),reply.body(),thread,job,saved.optLong("due"),instant)){

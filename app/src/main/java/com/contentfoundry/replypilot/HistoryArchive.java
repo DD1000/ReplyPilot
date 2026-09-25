@@ -102,7 +102,6 @@ final class HistoryArchive {
             again=clearPending||scrubPending||(contentEpoch!=epoch&&HistoryArchivePolicy.canRead(lastAccess));
             if(again)scheduleLocked(c,750);else if(!success&&HistoryArchivePolicy.canRead(lastAccess)){long delay=HistoryArchivePolicy.retryDelay(syncFailures);if(delay>0)scheduleLocked(c,delay);}}
         if(success||HistoryArchivePolicy.canRead(permission))MessageChanges.publish();
-        if(success)HistoryLearning.refresh(c);
     }
     private static void check(Context c,int permission,long revision){int actual=access(c);long current=synchronizeAccess(c,actual);if(actual!=permission||current!=revision||!HistoryArchivePolicy.canRead(actual))throw new IllegalStateException("Message access changed during archive refresh.");}
     static boolean canDeliver(Context c,JSONObject result){

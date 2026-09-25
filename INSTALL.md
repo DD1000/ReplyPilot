@@ -1,14 +1,24 @@
-# Install Reply Pilot 0.11.1
+# Install Reply Pilot 0.12.0
 
-## Build on the Mac
+## 1. Update the server
 
-Double-click **Build Reply Pilot.command** in the project folder. It uses Android Studio's built-in Java and the Android SDK in `~/Library/Android/sdk`, runs the unit tests, and saves `dist/Reply-Pilot-0.11.1.apk`. The build log is saved as `build-log.txt`. The signing key in `.local-signing/` must stay in place; without it the phone rejects the update.
+Double-click **Update Server.command** in the project folder. It runs the server tests, then uploads `relay/` to your Reply Pilot project on Railway using your Mac's Railway sign-in (it offers to sign in or install Railway's tool if needed). Your OpenAI key and phone token stay in Railway; no new variables are needed. The log is saved as `server-update-log.txt`. Older 0.11.x phones keep working with the updated server.
 
-## Update the Pixel
+## 2. Build the app
 
-Transfer **Reply-Pilot-0.11.1.apk** from `dist/` with Quick Share, then open it in Files by Google and install it as an update over Reply Pilot; **do not uninstall**. Updating in place keeps your pairing, profiles and drafts. Check Reply Pilot → Settings for **Version 0.11.1** (version code 65).
+Double-click **Build Reply Pilot.command**. It uses Java 21 and the Android SDK in `~/Library/Android`, runs the unit tests, and saves `dist/Reply-Pilot-0.12.0.apk`, checking that it's signed with your phone's key (`.local-signing/` must stay in place). The log is saved as `build-log.txt`.
 
-## New in 0.11.1
+## 3. Install on the Pixel
+
+Quick Share **Reply-Pilot-0.12.0.apk** from `dist/`, open it in Files by Google, and install it as an update; **do not uninstall**. Settings shows **Version 0.12.0** (version code 66). Then open a chat → Reply setup → **Train Autopilot**. After training, choose Autopilot and save.
+
+## New in 0.12.0
+
+- Per-chat **Train Autopilot**: reads the most recent 1,000 texts with that person once, when you tap it, and saves an encrypted persona on the phone. View, retrain or remove it in Reply setup.
+- Autopilot can only be on for trained chats. The 0.11.0 whole-phone history preparation is removed and its saved summaries are deleted.
+- Training uses GPT-6 Astra (falls back to the reply model); replies use GPT-6 Sol.
+
+## Previous release: 0.11.1
 
 - Sending uses the phone's only active SIM even when its ID changed, instead of stopping with “Select an active SIM in Settings.”
 - An empty Sending SIM menu explains whether Phone access is missing or Android reports no active SIM, with buttons to fix Phone access.

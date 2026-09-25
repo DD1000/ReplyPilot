@@ -30,8 +30,12 @@ final class PilotTrainingHistoryPolicy {
 
     /** Merge metadata first so an older MMS never requires decoding its text unnecessarily. */
     static List<Entry> newest(long thread,TextSource sms,TextSource mms,int limit,Runnable validateAccess){
+        return newest(thread,sms,mms,limit,PilotTrainingPolicy.HISTORY,validateAccess);
+    }
+    /** Train Autopilot reads a larger, still bounded, window with the same merge rules. */
+    static List<Entry> newest(long thread,TextSource sms,TextSource mms,int limit,int maximum,Runnable validateAccess){
         SmsHistoryPolicy.validateThread(thread);
-        if(limit<1||limit>PilotTrainingPolicy.HISTORY)throw new IllegalArgumentException("Invalid practice history limit.");
+        if(maximum<1||maximum>PersonaPolicy.MAX_MESSAGES||limit<1||limit>maximum)throw new IllegalArgumentException("Invalid practice history limit.");
         List<Entry> rows=new ArrayList<>();Set<String> keys=new HashSet<>();
         validateAccess.run();sms.advance();mms.advance();
         while(rows.size()<limit&&(sms.position()!=null||mms.position()!=null)){

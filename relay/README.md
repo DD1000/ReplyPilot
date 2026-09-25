@@ -1,4 +1,7 @@
-# Reply Pilot private AI service
+# Reply Pilot relay
+
+**0.12.0 — Train Autopilot.** `POST /persona-train` accepts one contact's most recent texts (1–1,000 `me`/`them`/`autopilot` turns, each up to 2,000 characters, 300,000 total; no names, numbers or ids) and returns a bounded persona (`writingStyle`, `relationship`, `context`, `avoid`) plus up to 30 indexes of the owner's own messages to use as examples. It uses `OPENAI_TRAINING_MODEL` (default `gpt-6-astra`, reasoning effort medium, 150-second limit) and retries once with `OPENAI_MODEL` when the key can't use the training model. Draft, Autopilot and media requests accept an optional `persona` (the phone's stored persona with up to 30 `{incoming,reply}` examples) validated on every request. Authenticated `/health` adds `personaVersion:1`, `trainingModel` and `trainingModelAvailable`, checked with a free model-metadata request cached for 10 minutes. Nothing is stored: no conversation database, `store:false`, and the persona lives only on the phone. `/history-analysis` and `historyMemory` remain for 0.11.x phones.
+
 
 ## 0.11.0 current protocol
 
@@ -54,7 +57,8 @@ In Railway, set private values in the service’s Variables tab, then deploy the
 | --- | --- |
 | `OPENAI_API_KEY` | Server-only OpenAI key; never returned to the phone. |
 | `REPLY_PILOT_TOKEN` | Random 32–128 character base64url phone credential. Generate with `pair.mjs`. |
-| `OPENAI_MODEL` | Defaults to `gpt-6-sol`. An alternative must support Responses, strict structured outputs and `reasoning.effort: none`. |
+| `OPENAI_MODEL` | Reply model. Defaults to `gpt-6-sol`. An alternative must support Responses, strict structured outputs and `reasoning.effort: none`. |
+| `OPENAI_TRAINING_MODEL` | Train Autopilot model. Defaults to `gpt-6-astra`; falls back to `OPENAI_MODEL` if the key can't use it. |
 | `PORT` | Host-provided listening port, otherwise 8781. |
 | `HOST` | Docker uses `0.0.0.0`; standalone defaults to loopback. |
 | `TRUST_TLS_PROXY` | Docker uses `yes` because its production endpoint must sit behind trusted HTTPS termination. |

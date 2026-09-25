@@ -9,7 +9,7 @@ final class ForegroundSuggestions {
     private static final LinkedHashSet<String> attempted=new LinkedHashSet<>();
     static boolean enabled(Context c){return PilotApp.foreground&&c.getSharedPreferences("settings",0).getBoolean("inAppSuggestions",true);}
     static boolean eligible(Context c,long thread,long base)throws Exception{
-        if(!enabled(c)||!HistoryLearning.ready(c)||base<=0||MmsDownloads.isPending()||MmsAttachments.hasStaged(c,thread)||MmsAttachments.hasSentForBase(c,thread,base)||Messages.latest(c,thread)!=base)return false;
+        if(!enabled(c)||base<=0||!Personas.ready(c,thread)||MmsDownloads.isPending()||MmsAttachments.hasStaged(c,thread)||MmsAttachments.hasSentForBase(c,thread,base)||Messages.latest(c,thread)!=base)return false;
         if(ManualTakeover.blocked(c,thread))return false;
         Store db=Store.get(c);JSONObject profile=db.relationship(thread);
         if(!profile.optBoolean("cloudEnabled")||CloudConfig.read(c)==null||db.draft(thread,base)!=null||db.replyDecision(thread,base)!=null||profile.optBoolean("autoSend"))return false;

@@ -2,6 +2,7 @@ import { timingSafeEqual,createHash } from 'node:crypto';
 import {autopilotInstructions,autopilotFormat,autopilotFallback,validateAutopilotResult} from './autopilot.mjs';
 import {validateHistoryAnalysis,historyAnalysisInstructions,historyAnalysisFormat,validateHistoryAnalysisResult,validateHistoryMemory,historyMemoryInstructions} from './history-learning.mjs';
 import {planReason,unansweredTexts} from './plan-safety.mjs';
+import {validatePersonaTraining,personaTrainingContent,personaTrainingFormat,personaTrainingInstructions,validatePersonaTrainingResult,validatePersona,personaInstructions} from './persona.mjs';
 import {isLocationQuestion,isBareLocationQuestion,freshLocation,safeLocationLabel,locationOnlyReply,locationInstructions} from './location-context.mjs';
 import {girlfriendPaused} from './girlfriend-mode.mjs';
 import {pilotGuidanceInstructions,trainingInstructions,trainingFormat,cleanGuidanceText} from './pilot-training.mjs';
@@ -156,6 +157,7 @@ export function validateInput(raw,{media=false}={}) {
  if(!raw || typeof raw!=='object' || Array.isArray(raw))throw new PublicError(400,'Invalid draft request.');
  if(raw.autopilot!==undefined&&typeof raw.autopilot!=='boolean')throw new PublicError(400,'Invalid Autopilot preference.');
  let historyMemory;try{if(raw.historyMemory!==undefined)historyMemory=validateHistoryMemory(raw.historyMemory);}catch{throw new PublicError(400,'Invalid saved history context.');}
+ let persona;try{if(raw.persona!==undefined)persona=validatePersona(raw.persona);}catch{throw new PublicError(400,'Invalid trained persona. Retrain Autopilot for this contact.');}
  const learned=validateStyleMode(raw),relationship=bounded(raw.relationship??'',relationshipLimit,'Relationship context');
  const samples=bounded(raw.samples??'',8000,'Conversation samples');
  const tone=tones.has(raw.tone)?raw.tone:'Natural';
@@ -188,7 +190,7 @@ export function validateInput(raw,{media=false}={}) {
  if(!matchStyle&&history.length>Math.max(8,history.length-unansweredStart))throw new PublicError(400,'History matching is off; include up to eight recent messages or the complete unanswered sequence.');
  // Already-installed phones omitted this field and may auto-send the response.
  const automatic=raw.automatic??true;
- return{...(raw.autopilot!==undefined?{autopilot:raw.autopilot}:{}),...(historyMemory?{historyMemory}:{}),relationship,samples,tone:learned?(engagement==='girlfriend'?'Warm':'Use AI intuition'):tone,engagement,personality,humorLevel:learned?0:humorLevel,insideJokes:learned?'':insideJokes,...(learned?{styleMode:'learned'}:{}),approvedExamples,pilotTraining,messageMeanings,...(ownerInterpretation?{ownerInterpretation}:{}),...(locationContext?{locationContext}:{}),history,style:matchStyle?style.map(x=>bounded(x,220,'Style example')):[],matchStyle,automatic,automationReady:raw.automationReady===true};
+ return{...(raw.autopilot!==undefined?{autopilot:raw.autopilot}:{}),...(historyMemory?{historyMemory}:{}),...(persona?{persona}:{}),relationship,samples,tone:learned?(engagement==='girlfriend'?'Warm':'Use AI intuition'):tone,engagement,personality,humorLevel:learned?0:humorLevel,insideJokes:learned?'':insideJokes,...(learned?{styleMode:'learned'}:{}),approvedExamples,pilotTraining,messageMeanings,...(ownerInterpretation?{ownerInterpretation}:{}),...(locationContext?{locationContext}:{}),history,style:matchStyle?style.map(x=>bounded(x,220,'Style example')):[],matchStyle,automatic,automationReady:raw.automationReady===true};
 }
 export function authorized(header, token) {
  const a=Buffer.from(header??''),b=Buffer.from(`Bearer ${token}`);
@@ -289,18 +291,43 @@ export function extractMedia(result,mediaType){
   suggestion:unsuitable?'':suggestion,reason:unsuitable?'needs_review':value.reason,reviewOnly:true};
 }
 function writingInstructions(input){return instructions+contactDetailsInstructions+pilotGuidanceInstructions+approvedExamplesInstructions+engagementInstructions[input.engagement]+(input.styleMode==='learned'?learnedVoiceInstructions:(input.tone==='Use AI intuition'?intuitionInstructions:input.tone==='Myself (beta)'?myselfInstructions:'')+contactHumorInstructions+humorLevelInstructions[input.humorLevel])+(input.ownerInterpretation==='joke'?jokeInstructions:'')+locationInstructions;}
-export function createRelay({apiKey,token,model='gpt-6-sol',fetchImpl=fetch,now=Date.now,maxDaily=200}) {
+export function createRelay({apiKey,token,model='gpt-6-sol',trainingModel='gpt-6-astra',fetchImpl=fetch,now=Date.now,maxDaily=200}) {
  let windowStart=now(),requests=0,day='',daily=0,inflight=0;
  const cache=new Map();
+ // Model access is checked with a free metadata request, never a paid generation.
+ let modelCheck={at:0,available:null};
+ async function trainingModelAvailable(){
+  if(!apiKey)return false;if(now()-modelCheck.at<600000&&modelCheck.available!==null)return modelCheck.available;
+  let available=null;try{const response=await fetchImpl(`https://api.openai.com/v1/models/${encodeURIComponent(trainingModel)}`,{headers:{Authorization:`Bearer ${apiKey}`},redirect:'error',signal:AbortSignal.timeout(10000)});await response.body?.cancel?.();available=response.ok?true:[401,403,404].includes(response.status)?false:null;}catch{available=null;}
+  modelCheck={at:now(),available};return available;
+ }
+ // One persona per request. The strongest configured model reads the contact's
+ // recent texts once; if this key cannot use it, the reply model is used instead.
+ async function trainPersona(input,stamp){
+  const call=async(chosen,effort)=>fetchImpl('https://api.openai.com/v1/responses',{
+   method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},redirect:'error',signal:AbortSignal.timeout(150000),
+   body:JSON.stringify({model:chosen,store:false,instructions:personaTrainingInstructions,input:personaTrainingContent(input),text:{format:personaTrainingFormat},reasoning:{effort},max_output_tokens:16000})
+  });
+  let used=trainingModel,response=await call(trainingModel,'medium');
+  if(!response.ok&&[403,404].includes(response.status)&&trainingModel!==model){await response.body?.cancel?.();used=model;response=await call(model,'low');}
+  if(!response.ok){await response.body?.cancel?.();const status=response.status;
+   if(status===401||status===403)throw new PublicError(503,'Check the OpenAI key and model access on the server.');
+   if(status===429)throw new PublicError(429,'OpenAI usage or billing limit reached. Check your API account.');
+   throw new PublicError(502,'OpenAI could not train this persona right now. Try again.');
+  }
+  const raw=await response.text();if(raw.length>1048576)throw new PublicError(502,'The provider response was too large.');
+  let result;try{result=validatePersonaTrainingResult(responseObject(JSON.parse(raw)),input);}catch(error){if(error instanceof PublicError)throw error;throw new PublicError(502,'No usable persona was returned. Try training again.');}
+  return{...result,model:used,engine:`OpenAI · ${used}`,elapsedMs:now()-stamp};
+ }
  return async function relay({method,path,authorization,body}) {
   if(!authorized(authorization,token))throw new PublicError(401,'Phone connection not recognized. Pair again.');
-  if(method==='GET'&&path==='/health')return{ready:!!apiKey,model,provider:'OpenAI',limitPerDay:maxDaily,contextLimit:50,contextVersion:2,replyDecisionVersion:1,replySafetyVersion:1,planSafetyVersion:1,personalizationVersion:1,locationVersion:1,girlfriendModeVersion:1,attentionActionsVersion:1,contactHumorVersion:1,mediaAnalysisVersion:1,approvedLearningVersion:1,pilotTrainingVersion:1,messageMeaningsVersion:1,contactGuidanceVersion:1,autopilotVersion:1,historyAnalysisVersion:1};
-  if(method!=='POST'||!['/draft','/media-analysis','/train','/history-analysis'].includes(path))throw new PublicError(404,'Not found.');
+  if(method==='GET'&&path==='/health')return{ready:!!apiKey,model,provider:'OpenAI',limitPerDay:maxDaily,contextLimit:50,contextVersion:2,replyDecisionVersion:1,replySafetyVersion:1,planSafetyVersion:1,personalizationVersion:1,locationVersion:1,girlfriendModeVersion:1,attentionActionsVersion:1,contactHumorVersion:1,mediaAnalysisVersion:1,approvedLearningVersion:1,pilotTrainingVersion:1,messageMeaningsVersion:1,contactGuidanceVersion:1,autopilotVersion:1,historyAnalysisVersion:1,personaVersion:1,trainingModel,trainingModelAvailable:await trainingModelAvailable()};
+  if(method!=='POST'||!['/draft','/media-analysis','/train','/history-analysis','/persona-train'].includes(path))throw new PublicError(404,'Not found.');
   if(!apiKey)throw new PublicError(503,'Add the OpenAI API key on the server before generating replies.');
-  const media=path==='/media-analysis',training=path==='/train',analyzing=path==='/history-analysis';
-  let input;try{input=analyzing?validateHistoryAnalysis(body):training?validateTrainingInput(body):media?validateMediaInput(body):validateInput(body);}catch(error){if(error instanceof PublicError)throw error;throw new PublicError(400,'Invalid history analysis request.');}
-  const autopilot=!media&&!training&&!analyzing&&input.autopilot===true,joke=input.ownerInterpretation==='joke';
-  const unanswered=[...unansweredTexts(input.history),...(media&&input.caption?[input.caption]:[])],locationQuestion=isLocationQuestion(unanswered);
+  const media=path==='/media-analysis',training=path==='/train',analyzing=path==='/history-analysis',personaTraining=path==='/persona-train';
+  let input;try{input=personaTraining?validatePersonaTraining(body):analyzing?validateHistoryAnalysis(body):training?validateTrainingInput(body):media?validateMediaInput(body):validateInput(body);}catch(error){if(error instanceof PublicError)throw error;throw new PublicError(400,personaTraining&&error instanceof TypeError?error.message:'Invalid history analysis request.');}
+  const autopilot=!media&&!training&&!analyzing&&!personaTraining&&input.autopilot===true,joke=input.ownerInterpretation==='joke';
+  const unanswered=personaTraining?[]:[...unansweredTexts(input.history),...(media&&input.caption?[input.caption]:[])],locationQuestion=isLocationQuestion(unanswered);
   const bedtime=(media||input.engagement==='girlfriend')&&girlfriendPaused(unanswered,acknowledgment);
   if(typeof body.requestId!=='string'||!/^[a-zA-Z0-9-]{16,80}$/.test(body.requestId))throw new PublicError(400,'Invalid request identifier.');
   const stamp=now();for(const [id,item] of cache)if(stamp-item.created>300000)cache.delete(id);
@@ -316,6 +343,7 @@ export function createRelay({apiKey,token,model='gpt-6-sol',fetchImpl=fetch,now=
   requests++;daily++;inflight++;
   const promise=(async()=>{
    try{
+    if(personaTraining)return await trainPersona(input,stamp);
     if(autopilot){
      const checked=result=>({...result,engine:'Reply Pilot · Autopilot',elapsedMs:now()-stamp});
      if(input.automatic&&!input.automationReady)return checked(noReply('insufficient_history'));
@@ -355,7 +383,7 @@ export function createRelay({apiKey,token,model='gpt-6-sol',fetchImpl=fetch,now=
     }
     const response=await fetchImpl('https://api.openai.com/v1/responses',{
      method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},redirect:'error',signal:AbortSignal.timeout(45000),
-     body:JSON.stringify({model,store:false,instructions:analyzing?historyAnalysisInstructions:autopilot?autopilotInstructions:media&&input.autopilot===true?mediaInstructions+historyMemoryInstructions+approvedExamplesInstructions+contactDetailsInstructions:training?trainingInstructions+contactDetailsInstructions+(input.styleMode==='learned'?learnedPracticeInstructions:''):writingInstructions(input)+(input.historyMemory?historyMemoryInstructions:'')+(media?'\n'+mediaInstructions:''),input:content,text:{format:analyzing?historyAnalysisFormat:autopilot?autopilotFormat:training?trainingFormat:media?mediaFormat:replyFormat},reasoning:{effort:'none'},max_output_tokens:analyzing?1600:training?500:media?700:autopilot?420:320})
+     body:JSON.stringify({model,store:false,instructions:analyzing?historyAnalysisInstructions:autopilot?autopilotInstructions+(input.persona?personaInstructions:''):media&&input.autopilot===true?mediaInstructions+historyMemoryInstructions+approvedExamplesInstructions+contactDetailsInstructions+(input.persona?personaInstructions:''):training?trainingInstructions+contactDetailsInstructions+(input.styleMode==='learned'?learnedPracticeInstructions:''):writingInstructions(input)+(input.historyMemory?historyMemoryInstructions:'')+(input.persona?personaInstructions:'')+(media?'\n'+mediaInstructions:''),input:content,text:{format:analyzing?historyAnalysisFormat:autopilot?autopilotFormat:training?trainingFormat:media?mediaFormat:replyFormat},reasoning:{effort:'none'},max_output_tokens:analyzing?1600:training?500:media?700:autopilot?420:320})
     });
     if(!response.ok){await response.body?.cancel();const status=response.status;
      if(status===401||status===403)throw new PublicError(503,'Check the OpenAI key and model access on the server.');
@@ -390,7 +418,7 @@ export function createRelay({apiKey,token,model='gpt-6-sol',fetchImpl=fetch,now=
   })();
   const entry={created:stamp,input:encoded,promise};cache.set(body.requestId,entry);
   const cleanup=setTimeout(()=>{if(cache.get(body.requestId)===entry)cache.delete(body.requestId);},300000);cleanup.unref?.();
-  if(training||analyzing)try{return await promise;}catch(error){
+  if(training||analyzing||personaTraining)try{return await promise;}catch(error){
    // A practice reply is saved on the phone before the next fictional turn is
    // requested. Let that same turn retry a transient failure without duplicating
    // the saved lesson; successful results still retain normal idempotency.

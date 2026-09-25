@@ -6,9 +6,11 @@ import org.json.*;
 import java.util.*;
 
 final class ReplyReadiness {
+    /** Autopilot is ready for a chat once the owner has trained it. Samples no longer unlock it. */
     static ReplyEligibility.Result current(Context context,long thread,String samples){
         SmsHistoryPolicy.validateThread(thread);
-        return ReplyReadinessHistory.read(context,thread,samples);
+        long trained=Personas.trainedMessages(context,thread);
+        return trained>=0?new ReplyEligibility.Result(true,(int)Math.min(trained,Integer.MAX_VALUE),0,0):new ReplyEligibility.Result(false,0,0,0);
     }
     /** Browsing a loaded chat does not depend on the optional readiness check. */
     static JSONObject forDisplay(Context context,long thread,String samples,boolean readOnly)throws JSONException{

@@ -31,6 +31,12 @@ final class PilotTrainingHistory {
         return history;
     }
 
+    /** Newest-first SMS/MMS text for Train Autopilot, bounded to PersonaPolicy.MAX_MESSAGES. */
+    static List<PilotTrainingHistoryPolicy.Entry> recent(Context context,long thread,String address,int limit,Runnable validateAccess){
+        try(Source sms=new Source(context,thread,"sms",false,address,validateAccess);Source mms=new Source(context,thread,"mms",false,address,validateAccess)){
+            return PilotTrainingHistoryPolicy.newest(thread,sms,mms,limit,PersonaPolicy.MAX_MESSAGES,validateAccess);
+        }
+    }
     private static Read readNewest(Context context,long thread,String address,boolean incomingOnly,int limit,Runnable validateAccess){
         try(Source sms=new Source(context,thread,"sms",incomingOnly,address,validateAccess);Source mms=new Source(context,thread,"mms",incomingOnly,address,validateAccess)){
             List<PilotTrainingHistoryPolicy.Entry> rows=PilotTrainingHistoryPolicy.newest(thread,sms,mms,limit,validateAccess);

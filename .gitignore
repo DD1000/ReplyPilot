@@ -19,3 +19,4 @@ __pycache__/
 *.p12
 build-log.txt
 _to_delete/
+server-update-log.txt

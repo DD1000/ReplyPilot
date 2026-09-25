@@ -9,7 +9,7 @@ import java.util.*;
 final class TextMmsDrafts {
     record History(TextMmsDraftPolicy.Context context,String fingerprint) {}
     static JSONObject generate(Context c,long thread,long base,long textMmsId,boolean inApp)throws Exception{
-        HistoryLearning.requireReady(c);String learningToken=HistoryLearning.token(c);
+        if(inApp)Personas.requireReady(c,thread);String learningToken=Personas.token(c,thread);
         Store store=Store.get(c);JSONObject profile,config,before;long revision,manualRevision;
         synchronized(PilotApp.SEND_LOCK){
             require(c,thread,base,inApp);ManualTakeover.require(c,thread);manualRevision=ManualTakeover.revision(c,thread);profile=store.relationship(thread);
@@ -28,9 +28,9 @@ final class TextMmsDrafts {
         else{
             boolean match=c.getSharedPreferences("settings",0).getBoolean("matchMyStyle",true);
             JSONObject request=CloudDrafts.payload(thread,history.context().messages(),ContactGuidance.context(profile.optString("body"),profile.optString("importantDetails"),"always_reply"),profile.optString("samples"),"Use AI intuition",match)
-                .put("automatic",false).put("autopilot",true).put("automationReady",false).put("engagement","always_reply").put("styleMode","learned").put("historyMemory",HistoryLearning.context(c,thread));
+                .put("automatic",false).put("autopilot",true).put("automationReady",false).put("engagement","always_reply").put("styleMode","learned").put("persona",Personas.forReply(c,thread));
             if(match)request.put("approvedExamples",ApprovedLearning.examples(c,thread));
-            if(!ManualTakeover.unchanged(c,thread,manualRevision)||!HistoryLearning.unchanged(c,learningToken))throw new IllegalStateException(ManualTakeoverPolicy.WAITING);ManualTakeover.require(c,thread);
+            if(!ManualTakeover.unchanged(c,thread,manualRevision)||!Personas.unchanged(c,thread,learningToken))throw new IllegalStateException(ManualTakeoverPolicy.WAITING);ManualTakeover.require(c,thread);
             JSONObject response;
             try{response=CloudClient.request(config,"/draft",request);}
             catch(Exception unavailable){response=new JSONObject().put("decision","reply").put("reason","reply_needed").put("body",AutopilotPolicy.fallback("model_unavailable").body()).put("attentionNeeded",true).put("attentionReason","model_unavailable");}
@@ -46,7 +46,7 @@ final class TextMmsDrafts {
             if(revision!=store.generationRevision()||latest.optLong("revision")!=profile.optLong("revision")||!latest.optBoolean("cloudEnabled")||latestConfig==null||!latestConfig.optString("revision").equals(config.optString("revision")))throw new IllegalStateException("Your AI settings changed. Tap Draft reply again.");
             if(!Objects.equals(before==null?null:before.toString(),draft==null?null:draft.toString()))throw new IllegalStateException("Your draft changed while AI was working. Your text was kept.");
             if(!current(c,thread,textMmsId))throw changed();
-            if(!HistoryLearning.unchanged(c,learningToken))throw new IllegalStateException("Conversation learning changed. Draft again.");
+            if(!Personas.unchanged(c,thread,learningToken))throw new IllegalStateException("Conversation learning changed. Draft again.");
             store.clearReplyDecision(thread,base);store.draftTextMms(thread,base,reply.body(),anchor);
             store.draftAttention(thread,base,reply.body(),reply.attentionNeeded()?reply.attentionReason():"");
             JSONObject saved=store.draft(thread,base),heldReply=null,outcome=null;
