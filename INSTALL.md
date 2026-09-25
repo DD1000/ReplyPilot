@@ -1,14 +1,20 @@
-# Install Reply Pilot 0.11.0
+# Install Reply Pilot 0.11.1
+
+## Build on the Mac
+
+Double-click **Build Reply Pilot.command** in the project folder. It uses Android Studio's built-in Java and the Android SDK in `~/Library/Android/sdk`, runs the unit tests, and saves `dist/Reply-Pilot-0.11.1.apk`. The build log is saved as `build-log.txt`. The signing key in `.local-signing/` must stay in place; without it the phone rejects the update.
 
 ## Update the Pixel
 
-Transfer **Reply-Pilot-0.11.0-install.zip** from `dist/` with Quick Share. In Files by Google, open the ZIP, choose **Extract**, then open **Reply-Pilot-0.11.0.apk**. The ZIP itself is not the installer. Install as an update over Reply Pilot; **do not uninstall**. Updating in place retains your pairing, profiles and drafts. If Android asks, allow installation from the app opening the file.
+Transfer **Reply-Pilot-0.11.1.apk** from `dist/` with Quick Share, then open it in Files by Google and install it as an update over Reply Pilot; **do not uninstall**. Updating in place keeps your pairing, profiles and drafts. Check Reply Pilot → Settings for **Version 0.11.1** (version code 65).
 
-You can also transfer the APK directly. Check Reply Pilot → Settings for **Version 0.11.0** (version code 64) after installation. Updating pauses queued sends for fresh review. A normal update retains your saved phone connection. If you already cleared app storage, reconnect using your existing phone pairing code; a new OpenAI API key is not required. This release preserves the existing SMS database, phone connection and hosted `gpt-6-sol` model. This update adds no permissions beyond 0.10.4.
+## New in 0.11.1
 
-You can update directly from 0.7.2; intermediate versions are not required. This includes the Messages header, status-bar spacing and Midnight default introduced in later versions.
+- Sending uses the phone's only active SIM even when its ID changed, instead of stopping with “Select an active SIM in Settings.”
+- An empty Sending SIM menu explains whether Phone access is missing or Android reports no active SIM, with buttons to fix Phone access.
+- Choosing a sending SIM saves immediately.
 
-## New in 0.11.0
+## Previous release: 0.11.0
 
 - Reply setup now has **Off** and **Autopilot**. The compact **Timer** defaults to **Instant**, with **1 minute** and **5 minutes**. Tap the composer arrow to send now; hold it for the same timer choices.
 - Train Pilot, Reply needs you actions, conversation-style selectors, girlfriend mode and the old send-after/sleep/range controls are removed. Relationship Dynamic, Important Details, approved writing examples and optional chat-log import remain.

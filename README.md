@@ -1,12 +1,19 @@
-# Reply Pilot 0.11.0 — Android personal preview
+# Reply Pilot 0.11.1 — Android personal preview
 
 An Android SMS/MMS app with per-contact OpenAI Autopilot, Relationship Dynamic and Important Details. Tap the send arrow to send manually or hold it to choose Instant, 1 minute or 5 minutes. Autopilot replies to new incoming turns, defers decisions and plans, and alerts the owner when a chat needs attention. The APK contains no OpenAI key; the existing paired HTTPS service holds it.
 
 Initial preparation analyzes all available SMS/MMS text through the service and OpenAI before conversation AI replies begin. Encrypted, resumable phone checkpoints produce bounded per-contact historical summaries. Later requests combine those summaries with recent context and approved writing. This is context, not model-weight training. Manual messaging remains available during preparation; inaccessible RCS history cannot be imported by this installation.
 
-**Status:** personal preview, version 0.11.0 (version code 64). The existing draft service is deployed to Railway, and the user previously reported successful phone pairing and test replies. See **VALIDATION.md** for completed checks by version. Carrier, background-send and physical Pixel media/codec tests remain outstanding. The browser preview uses synthetic data. ARM64 Android 12+; compile/target SDK 36. Pixel 11 compatibility requires testing on the actual phone.
+**Status:** personal preview, version 0.11.1 (version code 65). The existing draft service is deployed to Railway, and the user previously reported successful phone pairing and test replies. See **VALIDATION.md** for completed checks by version. Carrier, background-send and physical Pixel media/codec tests remain outstanding. The browser preview uses synthetic data. ARM64 Android 12+; compile/target SDK 36. Pixel 11 compatibility requires testing on the actual phone.
 
-## New in 0.11.0
+## New in 0.11.1
+
+- **Sending SIM fix.** When Android reports the phone's only SIM under a new ID (for example after a SIM, eSIM or carrier change), sending now uses that SIM instead of stopping with “Select an active SIM in Settings.” Phones with several SIMs still ask you to choose.
+- An empty **Settings → Sending SIM** menu now explains why: missing Phone access (with **Allow Phone access** and **Open app permissions** buttons) or no active SIM reported by Android. Send errors name the same fix.
+- Choosing a sending SIM saves immediately. A SIM without a display name still appears, labeled by carrier or slot. If Android's SIM list is briefly empty, the confirmed default texting SIM is used.
+- Install over 0.11.0 without clearing storage. No new permission, pairing or service update is needed.
+
+## Previous release: 0.11.0
 
 - Reply setup now has **Off** and **Autopilot**. The compact **Timer** defaults to **Instant**, with **1 minute** and **5 minutes**. Tap the composer arrow to send now; hold it for the same timer choices.
 - Train Pilot, Reply needs you actions, conversation-style selectors, girlfriend mode and the old send-after/sleep/range controls are removed. Relationship Dynamic, Important Details, approved writing examples and optional chat-log import remain.
