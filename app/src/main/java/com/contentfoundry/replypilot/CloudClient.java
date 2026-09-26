@@ -14,9 +14,9 @@ public final class CloudClient {
     public static JSONObject request(JSONObject config,String path,JSONObject body) throws Exception {
         if(config==null)throw new IllegalStateException("Connect your private OpenAI server in Settings first.");
         HttpsURLConnection connection=(HttpsURLConnection)new URL(config.getString("url")+path).openConnection();
-        boolean training="/persona-train".equals(path);
-        // Training reads up to 1,000 texts on the relay; everything else stays a quick request.
-        connection.setConnectTimeout(10000);connection.setReadTimeout(training?170000:55000);connection.setInstanceFollowRedirects(false);connection.setUseCaches(false);
+        boolean training="/persona-train".equals(path),premium=body!=null&&body.optBoolean("premium");
+        // Training reads up to 1,000 texts on the relay; Astra replies think a little first; everything else stays quick.
+        connection.setConnectTimeout(10000);connection.setReadTimeout(training?170000:premium?90000:55000);connection.setInstanceFollowRedirects(false);connection.setUseCaches(false);
         connection.setRequestProperty("Authorization","Bearer "+config.getString("token"));connection.setRequestProperty("Accept","application/json");
         try{
             if(body!=null){byte[] bytes=body.toString().getBytes(StandardCharsets.UTF_8);if(bytes.length>("/media-analysis".equals(path)||training?1048576:262144))throw new IllegalArgumentException(training?"This chat is too long to train at once. Try again after the next update.":"The reply context is too long.");connection.setRequestMethod("POST");connection.setRequestProperty("Content-Type","application/json");connection.setDoOutput(true);connection.setFixedLengthStreamingMode(bytes.length);try(OutputStream out=connection.getOutputStream()){out.write(bytes);}}

@@ -3,7 +3,7 @@ from pathlib import Path
 import hashlib, shutil, zipfile
 root=Path(__file__).resolve().parents[1]
 dist=root/'dist';dist.mkdir(exist_ok=True)
-version='0.12.2'
+version='0.12.3'
 apk=dist/f'Reply-Pilot-{version}.apk'
 shutil.copy2(root/'app/build/outputs/apk/release/app-release.apk',apk)
 shutil.copy2(apk,dist/'Reply-Pilot-preview.apk')

@@ -26,7 +26,7 @@ final class ReplyProfile {
         JSONObject result=new JSONObject().put("thread",thread).put("address",person.address()).put("name",person.name()).put("photo",ContactPhotos.url(c,person.address())).put("contactPhotoRevision",ContactPhotos.revision()).put("readOnly",person.readOnly())
             .put("relationship",profile).put("profileRevision",profile.optLong("revision"))
             .put("replyEligibility",ReplyReadiness.forDisplay(c,thread,profile.optString("samples"),person.readOnly()))
-            .put("approvedLearning",ApprovedLearning.state(c,thread)).put("persona",Personas.status(c,thread));
+            .put("approvedLearning",ApprovedLearning.state(c,thread)).put("persona",Personas.status(c,thread)).put("premiumReplies",ReplyModels.premium(c,thread));
         result.put("pilotTraining",PilotTraining.counts(c,result));
         requireAccess(c);if(epoch!=EPOCH.get()||permission!=access(c))throw new IllegalStateException("Contact access changed. Open Reply setup again.");
         return result.put("epoch",epoch).put("access",new JSONObject().put("readSms",true).put("defaultSms",true).put("contacts",(permission&4)!=0));

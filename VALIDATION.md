@@ -1,4 +1,12 @@
-# Validation record — 0.12.2
+# Validation record — 0.12.3
+
+## 0.12.3 Use Astra for this chat — 2026-09-25
+
+- New per-chat switch (phone storage `reply_models`, off by default) sends `premium:true` with Autopilot, in-app suggestion, explicit draft and text-MMS draft requests for that chat. The phone waits up to 90 seconds for these replies (55 otherwise).
+- Relay: **165 tests** pass, including new `premium.test.mjs` (3): Astra with effort `low` and a 2,000-token limit only for switched-on chats; a single fallback to Sol on 400, 403 or 404; the safe fallback still used on server errors; strict boolean validation; `premium` never sent to the model.
+- JVM: **627 tests** pass in the cloud check (new `ReplyModelsTest`); the compile check is clean outside the unavailable-library files.
+- Browser: new `tools/ui-premium.cjs` passes (off by default, cost explained, immediate per-chat save, failed save restores the saved state, turning off). `ui-train-autopilot`, `ui-autopilot-simple`, `ui-owner-views` and `ui-battery` still pass.
+- Physical Pixel check remains: a chat with the switch on replies (the log's `engine` should name `gpt-6-astra`), and the reply time is acceptable.
 
 ## 0.12.2 Opinion replies and Your views — 2026-09-25
 

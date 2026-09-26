@@ -178,6 +178,7 @@ export function validateInput(raw,{media=false}={}) {
  const locationContext=raw.locationContext===undefined?undefined:validateLocation(raw.locationContext);
  const planDeferral=validatePlanDeferral(raw.planDeferral);
  const ownerViews=raw.ownerViews===undefined?'':bounded(raw.ownerViews,1200,'Your views');
+ if(raw.premium!==undefined&&typeof raw.premium!=='boolean')throw new PublicError(400,'Invalid reply model choice.');
  if(!Array.isArray(raw.history)||raw.history.length<(media?0:1)||raw.history.length>50)throw new PublicError(400,media?'Use up to fifty recent messages.':'Include one to fifty recent messages.');
  let unansweredStart=raw.history.length;while(unansweredStart>0&&raw.history[unansweredStart-1]?.speaker==='them')unansweredStart--;
  const history=raw.history.map((m,index)=>{
@@ -196,7 +197,7 @@ export function validateInput(raw,{media=false}={}) {
  if(!matchStyle&&history.length>Math.max(8,history.length-unansweredStart))throw new PublicError(400,'History matching is off; include up to eight recent messages or the complete unanswered sequence.');
  // Already-installed phones omitted this field and may auto-send the response.
  const automatic=raw.automatic??true;
- return{...(raw.autopilot!==undefined?{autopilot:raw.autopilot}:{}),...(historyMemory?{historyMemory}:{}),...(persona?{persona}:{}),relationship,samples,tone:learned?(engagement==='girlfriend'?'Warm':'Use AI intuition'):tone,engagement,personality,humorLevel:learned?0:humorLevel,insideJokes:learned?'':insideJokes,...(learned?{styleMode:'learned'}:{}),approvedExamples,pilotTraining,messageMeanings,...(ownerInterpretation?{ownerInterpretation}:{}),...(locationContext?{locationContext}:{}),...(planDeferral?{planDeferral}:{}),...(ownerViews?{ownerViews}:{}),history,style:matchStyle?style.map(x=>bounded(x,220,'Style example')):[],matchStyle,automatic,automationReady:raw.automationReady===true};
+ return{...(raw.autopilot!==undefined?{autopilot:raw.autopilot}:{}),...(historyMemory?{historyMemory}:{}),...(persona?{persona}:{}),relationship,samples,tone:learned?(engagement==='girlfriend'?'Warm':'Use AI intuition'):tone,engagement,personality,humorLevel:learned?0:humorLevel,insideJokes:learned?'':insideJokes,...(learned?{styleMode:'learned'}:{}),approvedExamples,pilotTraining,messageMeanings,...(ownerInterpretation?{ownerInterpretation}:{}),...(locationContext?{locationContext}:{}),...(planDeferral?{planDeferral}:{}),...(ownerViews?{ownerViews}:{}),...(raw.premium===true?{premium:true}:{}),history,style:matchStyle?style.map(x=>bounded(x,220,'Style example')):[],matchStyle,automatic,automationReady:raw.automationReady===true};
 }
 // How many times Autopilot already put off plans since the owner last replied (phone-counted).
 function validatePlanDeferral(raw){
@@ -384,7 +385,7 @@ export function createRelay({apiKey,token,model='gpt-6-sol',trainingModel='gpt-6
      return{...result,engine:'Reply Pilot · approved location',elapsedMs:now()-stamp};
     }
     }
-    const providerInput={...input};delete providerInput.personality;delete providerInput.planDeferral;if(!autopilot)delete providerInput.ownerViews;if(!locationQuestion||planning)delete providerInput.locationContext;
+    const providerInput={...input};delete providerInput.personality;delete providerInput.planDeferral;delete providerInput.premium;if(!autopilot)delete providerInput.ownerViews;if(!locationQuestion||planning)delete providerInput.locationContext;
     if(input.styleMode==='learned'){delete providerInput.humorLevel;delete providerInput.insideJokes;delete providerInput.tone;}
     if(input.autopilot===true)for(const key of ['tone','engagement','humorLevel','insideJokes','pilotTraining','messageMeanings','ownerInterpretation'])delete providerInput[key];
     let content=JSON.stringify(providerInput);
@@ -395,10 +396,15 @@ export function createRelay({apiKey,token,model='gpt-6-sol',trainingModel='gpt-6
       {type:'input_image',image_url:`data:image/jpeg;base64,${image.jpegBase64}`,detail:'auto'}
      ])]}];
     }
-    const response=await fetchImpl('https://api.openai.com/v1/responses',{
-     method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},redirect:'error',signal:AbortSignal.timeout(45000),
-     body:JSON.stringify({model,store:false,instructions:analyzing?historyAnalysisInstructions:autopilot?autopilotInstructions+(input.persona?personaInstructions:'')+(planning?planDeferralInstructions(input.planDeferral.count):''):media&&input.autopilot===true?mediaInstructions+historyMemoryInstructions+approvedExamplesInstructions+contactDetailsInstructions+(input.persona?personaInstructions:''):training?trainingInstructions+contactDetailsInstructions+(input.styleMode==='learned'?learnedPracticeInstructions:''):writingInstructions(input)+(input.historyMemory?historyMemoryInstructions:'')+(input.persona?personaInstructions:'')+(media?'\n'+mediaInstructions:''),input:content,text:{format:analyzing?historyAnalysisFormat:autopilot?autopilotFormat:training?trainingFormat:media?mediaFormat:replyFormat},reasoning:{effort:'none'},max_output_tokens:analyzing?1600:training?500:media?700:autopilot?420:320})
+    // "Use Astra for this chat": the stronger model with a little reasoning and room for it.
+    // Without access (or if it rejects the request) the same reply falls back to the standard model.
+    const premium=input.premium===true&&!media&&!training&&!analyzing,outputLimit=analyzing?1600:training?500:media?700:autopilot?420:320;
+    const ask=(chosen,effort,limit)=>fetchImpl('https://api.openai.com/v1/responses',{
+     method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},redirect:'error',signal:AbortSignal.timeout(premium&&chosen===trainingModel?75000:45000),
+     body:JSON.stringify({model:chosen,store:false,instructions:analyzing?historyAnalysisInstructions:autopilot?autopilotInstructions+(input.persona?personaInstructions:'')+(planning?planDeferralInstructions(input.planDeferral.count):''):media&&input.autopilot===true?mediaInstructions+historyMemoryInstructions+approvedExamplesInstructions+contactDetailsInstructions+(input.persona?personaInstructions:''):training?trainingInstructions+contactDetailsInstructions+(input.styleMode==='learned'?learnedPracticeInstructions:''):writingInstructions(input)+(input.historyMemory?historyMemoryInstructions:'')+(input.persona?personaInstructions:'')+(media?'\n'+mediaInstructions:''),input:content,text:{format:analyzing?historyAnalysisFormat:autopilot?autopilotFormat:training?trainingFormat:media?mediaFormat:replyFormat},reasoning:{effort},max_output_tokens:limit})
     });
+    let usedModel=premium?trainingModel:model,response=await ask(usedModel,premium?'low':'none',premium?2000:outputLimit);
+    if(premium&&usedModel!==model&&[400,403,404].includes(response.status)){await response.body?.cancel();usedModel=model;response=await ask(model,'none',outputLimit);}
     if(!response.ok){await response.body?.cancel();const status=response.status;
      if(status===401||status===403)throw new PublicError(503,'Check the OpenAI key and model access on the server.');
      if(status===429)throw new PublicError(429,'OpenAI usage or billing limit reached. Check your API account.');
@@ -412,11 +418,11 @@ export function createRelay({apiKey,token,model='gpt-6-sol',trainingModel='gpt-6
      if(planning){
       // Never a commitment, a claimed whereabouts, or a repeat of anything already sent.
       const unsafe=planReason([],result.body)||unsuitableReply(result.body)||repeatsEarlier(result.body,earlier)||claimsWhereabouts(result.body);
-      return{...(unsafe?planDeferralFallback(input.planDeferral.count,earlier):{...result,attentionNeeded:true,attentionReason:'plans'}),engine:`OpenAI · ${model}`,elapsedMs:now()-stamp};
+      return{...(unsafe?planDeferralFallback(input.planDeferral.count,earlier):{...result,attentionNeeded:true,attentionReason:'plans'}),engine:`OpenAI · ${usedModel}`,elapsedMs:now()-stamp};
      }
      if(planReason([],result.body))result=autopilotFallback('plans');
      if(locationQuestion&&(!freshLocation(input.locationContext,now())||!locationOnlyReply(result.body,input.locationContext.label)))result=autopilotFallback('personal_info');
-     return {...result,engine:`OpenAI · ${model}`,elapsedMs:now()-stamp};
+     return {...result,engine:`OpenAI · ${usedModel}`,elapsedMs:now()-stamp};
     }
     if(media){
      const result=extractMedia(JSON.parse(raw),input.mediaType);
@@ -425,12 +431,12 @@ export function createRelay({apiKey,token,model='gpt-6-sol',trainingModel='gpt-6
      if(!reason&&result.suggestion&&planReason([],result.suggestion))reason='plans_need_input';
      if(!reason&&result.suggestion&&claimsWhereabouts(result.suggestion))reason='needs_review';
      if(reason){result.suggestion='';result.reason=reason;}
-     return{...result,engine:`OpenAI · ${model}`,elapsedMs:now()-stamp};
+     return{...result,engine:`OpenAI · ${usedModel}`,elapsedMs:now()-stamp};
     }
     let result=suppressRepeatedReply(input,extractReply(JSON.parse(raw)));
     if(result.decision==='reply'&&planReason(joke?[]:unanswered,result.body))result=noReply('plans_need_input');
     if(result.decision==='reply'&&locationQuestion&&(!freshLocation(input.locationContext,now())||!locationOnlyReply(result.body,input.locationContext.label)))result=noReply('needs_review');
-    return{...result,engine:`OpenAI · ${model}`,elapsedMs:now()-stamp};
+    return{...result,engine:`OpenAI · ${usedModel}`,elapsedMs:now()-stamp};
    }catch(error){if(autopilot)return {...(planning?planDeferralFallback(input.planDeferral.count,earlier):autopilotFallback('model_unavailable')),engine:'Reply Pilot · fallback',elapsedMs:now()-stamp};if(error instanceof PublicError)throw error;throw new PublicError(502,'The AI request could not finish. Check the connection and try again.');}
    finally{inflight--;}
   })();

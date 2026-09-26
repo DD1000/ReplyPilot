@@ -1,19 +1,25 @@
-# Reply Pilot 0.12.2 — Android personal preview
+# Reply Pilot 0.12.3 — Android personal preview
 
 An Android SMS/MMS app with per-chat **Train Autopilot**. Tap the send arrow to send manually or hold it to choose Instant, 1 minute or 5 minutes. For each chat you choose, Autopilot learns how you text that person and replies in your voice; it defers decisions and plans and alerts you when a chat needs attention. The APK contains no OpenAI key; your paired HTTPS service holds it.
 
 Training is per chat and only starts when you tap **Train Autopilot** in that chat's Reply setup. The phone reads your most recent 1,000 SMS/MMS texts with that person, the service asks the training model (GPT-6 Astra by default) once, and the phone saves the resulting persona encrypted in private storage: how you text them, the relationship, ongoing context, things to avoid, and up to 30 of your real replies as examples. Each Autopilot reply sends that persona and the recent conversation to the reply model (GPT-6 Sol by default). Nothing about a chat goes to the service until you train it. This is contextual memory, not model training. RCS chats are not available to this app.
 
-**Status:** personal preview, version 0.12.2 (version code 68). The existing draft service is deployed to Railway, and the user previously reported successful phone pairing and test replies. See **VALIDATION.md** for completed checks by version. Carrier, background-send and physical Pixel media/codec tests remain outstanding. The browser preview uses synthetic data. ARM64 Android 12+; compile/target SDK 36. Pixel 11 compatibility requires testing on the actual phone.
+**Status:** personal preview, version 0.12.3 (version code 69). The existing draft service is deployed to Railway, and the user previously reported successful phone pairing and test replies. See **VALIDATION.md** for completed checks by version. Carrier, background-send and physical Pixel media/codec tests remain outstanding. The browser preview uses synthetic data. ARM64 Android 12+; compile/target SDK 36. Pixel 11 compatibility requires testing on the actual phone.
 
-## New in 0.12.2
+## New in 0.12.3
+
+- **Use Astra for this chat.** A switch in each chat's Reply setup has your server write that chat's AI replies with its stronger model (`OPENAI_TRAINING_MODEL`, GPT-6 Astra by default) instead of GPT-6 Sol. It's better with jokes, tone and tricky questions, a little slower, and about 5× the cost: roughly 5–7¢ per reply instead of about 1¢. It's off by default and saves right away. If your key can't use Astra, that reply quietly uses the standard model.
+- The Autopilot switch's message for an untrained chat now says to train it first.
+- Requires the 0.12.3 server update. The auto-updater handles it. Install over 0.12.2 without clearing storage. No new permission.
+
+## Previous release: 0.12.2
 
 - **Autopilot answers opinion questions instead of dodging them.** Questions like “what do you think AI will do to the economy?” used to be treated as chatbot work: Autopilot held back and the phone swapped in “Got your message. Let me get back to you.” Now opinion and big-picture questions get a short, casual take in your texting style, with no alert. Real work requests (write code, an essay, homework) still get a casual brush-off in your voice and an alert.
 - **Questions about you get answered too.** “How would you use it?” used to get “Let me get back to you on that.” Now Autopilot answers from your views, your trained persona and what you've said before. When none of those cover it, it gives a short general answer without made-up details and alerts you so you can add more. Only truly private things (where you are, your address, schedule, money, health, codes or accounts) still get a deferral.
 - **Settings → Your views.** Type what you think about things people might ask you (up to 1,200 characters). When someone asks your opinion, Autopilot uses these views and never contradicts them. Without them it keeps opinions light and stays neutral on divisive political or religious questions.
 - **Fewer canned lines.** When Autopilot flags a chat for you, it keeps its own reply in your voice when that reply is safe. The fixed texts are used only if the AI is unreachable or its reply isn't safe (a commitment, a claimed location, or anything that looks like a number, link, email, address or code).
 - **Auto Updater.command.** Start it once and leave its window open: whenever Claude saves an update, the Mac updates the server (only if the server changed), builds the app (only if the app changed) and pushes to GitHub by itself, then shows a notification when the new APK is ready. It never deletes anything and stops at the first problem.
-- Requires the 0.12.2 server update. Install over 0.12.1 without clearing storage. No new permission.
+- Required the 0.12.2 server update.
 
 ## Previous release: 0.12.1
 

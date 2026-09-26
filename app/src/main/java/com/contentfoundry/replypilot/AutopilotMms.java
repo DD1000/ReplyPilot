@@ -94,6 +94,7 @@ final class AutopilotMms {
             JSONObject request=CloudDrafts.payload(thread,history.context().messages(),ContactGuidance.context(profile.optString("body"),profile.optString("importantDetails"),"always_reply"),profile.optString("samples"),"Use AI intuition",true)
                 .put("automatic",true).put("autopilot",true).put("automationReady",true).put("engagement","always_reply").put("persona",Personas.forReply(c,thread)).put("approvedExamples",ApprovedLearning.examples(c,thread));
             String views=OwnerViews.read(c);if(!views.isEmpty())request.put("ownerViews",views);
+            if(ReplyModels.premium(c,thread))request.put("premium",true);
             if(planning)request.put("planDeferral",new JSONObject().put("count",PlanDeferralPolicy.requestCount(deferrals)));
             if(!Personas.unchanged(c,thread,learning)||!same(source,capture(c,thread,id,receipt,0))||block(c,source,0)!=null)return;
             JSONObject response;

@@ -800,6 +800,12 @@ public class MainActivity extends Activity {
                         JSONObject persona="trainPersona".equals(action)?Personas.train(MainActivity.this,thread):Personas.forget(MainActivity.this,thread);
                         result=new JSONObject().put("persona",persona).put("replyEligibility",ReplyReadiness.json(ReplyReadiness.current(MainActivity.this,thread,"")));
                     }
+                    case "setPremiumReplies" -> {
+                        // Explicit owner choice for this one chat; costs more per reply.
+                        ReplyProfile.validateWrite(MainActivity.this,thread,p,Store.get(MainActivity.this).relationship(thread));
+                        if(!(p.opt("premium") instanceof Boolean on))throw new IllegalArgumentException("Choose on or off.");
+                        result=new JSONObject().put("premiumReplies",ReplyModels.setPremium(MainActivity.this,thread,on));
+                    }
                     case "launchInbox" -> result=LaunchInboxCache.load(getApplicationContext());
                     case "launchHistories" -> result=LaunchHistoryCache.load(getApplicationContext());
                     case "prefetchHistory" -> result=ConversationHistoryCache.prefetch(getApplicationContext(),p.getJSONArray("threads"));

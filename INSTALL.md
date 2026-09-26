@@ -1,4 +1,4 @@
-# Install Reply Pilot 0.12.2
+# Install Reply Pilot 0.12.3
 
 **Automatic:** double-click **Auto Updater.command** once and leave its window open (minimizing is fine). It does steps 1 to 2 below and the GitHub push by itself whenever Claude saves an update, then shows a notification when the APK is ready. You only install the APK on the phone (step 3). The manual steps below still work.
 
@@ -8,13 +8,17 @@ Double-click **Update Server.command** in the project folder. It runs the server
 
 ## 2. Build the app
 
-Double-click **Build Reply Pilot.command**. It uses Java 21 and the Android SDK in `~/Library/Android`, runs the unit tests, and saves `dist/Reply-Pilot-0.12.2.apk`, checking that it's signed with your phone's key (`.local-signing/` must stay in place). The log is saved as `build-log.txt`.
+Double-click **Build Reply Pilot.command**. It uses Java 21 and the Android SDK in `~/Library/Android`, runs the unit tests, and saves `dist/Reply-Pilot-0.12.3.apk`, checking that it's signed with your phone's key (`.local-signing/` must stay in place). The log is saved as `build-log.txt`.
 
 ## 3. Install on the Pixel
 
-Quick Share **Reply-Pilot-0.12.2.apk** from `dist/`, open it in Files by Google, and install it as an update; **do not uninstall**. Settings shows **Version 0.12.2** (version code 68). Your trained chats and Autopilot choices stay as they were. Then fill in Settings → **Your views** and tap **Save views**. If you haven't yet, also tap Settings → Phone setup → **Reply while locked → Allow**.
+Quick Share **Reply-Pilot-0.12.3.apk** from `dist/`, open it in Files by Google, and install it as an update; **do not uninstall**. Settings shows **Version 0.12.3** (version code 69). Your trained chats and Autopilot choices stay as they were. Then fill in Settings → **Your views** and tap **Save views**. If you haven't yet, also tap Settings → Phone setup → **Reply while locked → Allow**.
 
-## New in 0.12.2
+## New in 0.12.3
+
+- **Use Astra for this chat** in Reply setup: the stronger model writes that chat's AI replies (about 5× the cost per reply).
+
+## Previous release: 0.12.2
 
 - Opinion questions and questions about you (“How would you use it?”) get a short answer in your voice instead of a canned line.
 - **Auto Updater.command** runs the server update, app build and GitHub push for you.
